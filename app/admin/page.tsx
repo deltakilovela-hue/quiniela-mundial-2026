@@ -297,48 +297,50 @@ export default function AdminPage() {
                   const r = manualResults[match.id] ?? { h: '', a: '' }
                   const played = match.home_goals_real !== null
                   return (
-                    <div key={match.id} className="border-b border-slate-700/50 last:border-0 px-4 py-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-slate-500 font-mono text-xs w-6 shrink-0">{match.id}</span>
-                        <span className="text-slate-200 text-sm flex-1 min-w-0 truncate">
+                    <div key={match.id} className="border-b border-slate-700/50 last:border-0 px-3 sm:px-4 py-3">
+                      {/* Team names row */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-slate-500 font-mono text-xs shrink-0">{match.id}</span>
+                        <span className="text-slate-200 text-xs sm:text-sm flex-1 min-w-0 truncate">
                           {match.home_flag} {match.home_team} vs {match.away_team} {match.away_flag}
                         </span>
                         {played && (
-                          <span className="text-xs text-green-400 shrink-0">
+                          <span className="text-xs text-green-400 font-mono shrink-0">
                             {match.home_goals_real}–{match.away_goals_real} ✓
                           </span>
                         )}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <input
-                            type="number" min={0} max={20} value={r.h}
-                            onChange={(e) => setManualResults((p) => ({ ...p, [match.id]: { ...p[match.id], h: e.target.value } }))}
-                            className="w-12 text-center py-1 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm focus:outline-none focus:border-teal-500"
-                            placeholder="0"
-                          />
-                          <span className="text-slate-500">–</span>
-                          <input
-                            type="number" min={0} max={20} value={r.a}
-                            onChange={(e) => setManualResults((p) => ({ ...p, [match.id]: { ...p[match.id], a: e.target.value } }))}
-                            className="w-12 text-center py-1 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm focus:outline-none focus:border-teal-500"
-                            placeholder="0"
-                          />
-                          <button
-                            onClick={() => saveManualResult(match.id)}
-                            disabled={saving === match.id}
-                            className="px-3 py-1 bg-teal-700 hover:bg-teal-600 disabled:opacity-40 rounded text-xs font-semibold text-white transition-colors"
-                          >
-                            {saving === match.id ? '...' : played ? 'Update' : 'Guardar'}
-                          </button>
-                          <button
-                            onClick={() => toggleLock(match.id, !match.is_locked)}
-                            className={`px-2 py-1 rounded text-xs transition-colors ${
-                              match.is_locked ? 'bg-red-900/50 text-red-300 hover:bg-red-900' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                            }`}
-                          >
-                            {match.is_locked ? '🔒' : '🔓'}
-                          </button>
-                          {saveMsg[match.id] && <span className="text-green-400 text-xs">{saveMsg[match.id]}</span>}
-                        </div>
+                      </div>
+                      {/* Controls row */}
+                      <div className="flex items-center gap-1.5 ml-7">
+                        <input
+                          type="number" inputMode="numeric" min={0} max={20} value={r.h}
+                          onChange={(e) => setManualResults((p) => ({ ...p, [match.id]: { ...p[match.id], h: e.target.value } }))}
+                          className="w-11 h-9 text-center bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm focus:outline-none focus:border-teal-500"
+                          placeholder="0"
+                        />
+                        <span className="text-slate-500 text-xs">–</span>
+                        <input
+                          type="number" inputMode="numeric" min={0} max={20} value={r.a}
+                          onChange={(e) => setManualResults((p) => ({ ...p, [match.id]: { ...p[match.id], a: e.target.value } }))}
+                          className="w-11 h-9 text-center bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm focus:outline-none focus:border-teal-500"
+                          placeholder="0"
+                        />
+                        <button
+                          onClick={() => saveManualResult(match.id)}
+                          disabled={saving === match.id}
+                          className="h-9 px-3 bg-teal-700 hover:bg-teal-600 disabled:opacity-40 rounded text-xs font-semibold text-white transition-colors"
+                        >
+                          {saving === match.id ? '…' : played ? 'Update' : 'Guardar'}
+                        </button>
+                        <button
+                          onClick={() => toggleLock(match.id, !match.is_locked)}
+                          className={`h-9 px-2.5 rounded text-sm transition-colors ${
+                            match.is_locked ? 'bg-red-900/50 text-red-300 hover:bg-red-900' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                          }`}
+                        >
+                          {match.is_locked ? '🔒' : '🔓'}
+                        </button>
+                        {saveMsg[match.id] && <span className="text-green-400 text-xs">{saveMsg[match.id]}</span>}
                       </div>
                     </div>
                   )

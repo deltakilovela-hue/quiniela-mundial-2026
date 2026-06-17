@@ -110,34 +110,43 @@ export default function PredictionGrid({
               const played = match.home_goals_real !== null && match.away_goals_real !== null
 
               return (
-                <div key={match.id} className="border-b border-slate-700/50 last:border-0 px-4 py-3">
+                <div key={match.id} className="border-b border-slate-700/50 last:border-0 px-3 sm:px-4 py-3">
+                  {/* Top row: match ID, date, points */}
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-slate-500 text-xs font-mono w-6">{match.id}</span>
-                    <span className="text-xs text-slate-500">{formatDate(match.match_date)}</span>
-                    {locked && !played && <span className="text-xs text-red-400">🔒 Iniciado</span>}
+                    <span className="text-slate-500 text-xs font-mono">{match.id}</span>
+                    {locked && !played && <span className="text-xs text-red-400">🔒</span>}
                     {played && scoreInfo && (
-                      <span className={`ml-auto text-sm font-bold font-mono ${scoreInfo.total > 0 ? 'text-teal-400' : 'text-slate-500'}`}>
-                        +{scoreInfo.total} pts
+                      <span className={`text-xs font-bold font-mono ${scoreInfo.total > 0 ? 'text-teal-400' : 'text-slate-500'}`}>
+                        +{scoreInfo.total}pts
                       </span>
+                    )}
+                    {played && (
+                      <span className="font-mono font-bold text-white bg-teal-700 px-1.5 py-0.5 rounded text-xs">
+                        {match.home_goals_real}–{match.away_goals_real}
+                      </span>
+                    )}
+                    {played && scoreInfo && scoreInfo.breakdown.length > 0 && (
+                      <span className="text-teal-400 text-xs hidden sm:inline">{scoreInfo.breakdown.join(' · ')}</span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    {/* Home team */}
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                      <span className="text-lg shrink-0">{match.home_flag}</span>
-                      <span className="text-sm text-slate-200 truncate">{match.home_team}</span>
+                  {/* Match row: flag+name | score | name+flag */}
+                  <div className="flex items-center gap-2">
+                    {/* Home */}
+                    <div className="flex items-center gap-1 flex-1 min-w-0">
+                      <span className="text-base shrink-0">{match.home_flag}</span>
+                      <span className="text-xs sm:text-sm text-slate-200 truncate leading-tight">{match.home_team}</span>
                     </div>
 
-                    {/* Score inputs */}
-                    <div className="flex items-center gap-1 shrink-0">
+                    {/* Center: score display or inputs */}
+                    <div className="shrink-0">
                       {locked || !pin ? (
                         <div className="flex items-center gap-1 font-mono font-bold">
-                          <span className={`px-2 py-1 rounded text-sm ${played ? 'text-white' : 'text-slate-400'} bg-slate-700`}>
+                          <span className={`w-7 h-7 flex items-center justify-center rounded text-sm ${played ? 'text-white bg-slate-600' : 'text-slate-400 bg-slate-700'}`}>
                             {pred?.home_goals ?? '–'}
                           </span>
-                          <span className="text-slate-500">–</span>
-                          <span className={`px-2 py-1 rounded text-sm ${played ? 'text-white' : 'text-slate-400'} bg-slate-700`}>
+                          <span className="text-slate-500 text-xs">-</span>
+                          <span className={`w-7 h-7 flex items-center justify-center rounded text-sm ${played ? 'text-white bg-slate-600' : 'text-slate-400 bg-slate-700'}`}>
                             {pred?.away_goals ?? '–'}
                           </span>
                         </div>
@@ -145,57 +154,51 @@ export default function PredictionGrid({
                         <div className="flex items-center gap-1">
                           <input
                             type="number"
+                            inputMode="numeric"
                             min={0}
                             max={20}
                             value={pred?.home_goals ?? ''}
                             onChange={(e) => updatePred(match.id, 'home_goals', e.target.value)}
-                            className="w-10 text-center py-1 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm focus:outline-none focus:border-teal-500"
+                            className="w-10 h-10 text-center bg-slate-700 border border-slate-600 rounded text-white font-mono text-base focus:outline-none focus:border-teal-500 touch-manipulation"
                           />
-                          <span className="text-slate-500">–</span>
+                          <span className="text-slate-500 text-xs">-</span>
                           <input
                             type="number"
+                            inputMode="numeric"
                             min={0}
                             max={20}
                             value={pred?.away_goals ?? ''}
                             onChange={(e) => updatePred(match.id, 'away_goals', e.target.value)}
-                            className="w-10 text-center py-1 bg-slate-700 border border-slate-600 rounded text-white font-mono text-sm focus:outline-none focus:border-teal-500"
+                            className="w-10 h-10 text-center bg-slate-700 border border-slate-600 rounded text-white font-mono text-base focus:outline-none focus:border-teal-500 touch-manipulation"
                           />
                           <button
                             onClick={() => savePrediction(match.id)}
                             disabled={saving === match.id || pred === undefined}
-                            className={`px-2 py-1 rounded text-xs font-semibold transition-colors ${
+                            className={`w-10 h-10 rounded text-sm font-bold transition-colors ${
                               saved[match.id]
                                 ? 'bg-green-700 text-green-100'
                                 : 'bg-teal-700 hover:bg-teal-600 text-white disabled:opacity-40'
                             }`}
                           >
-                            {saved[match.id] ? '✓' : saving === match.id ? '...' : 'Guardar'}
+                            {saved[match.id] ? '✓' : saving === match.id ? '…' : '💾'}
                           </button>
                         </div>
                       )}
                     </div>
 
-                    {/* Away team */}
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
-                      <span className="text-sm text-slate-200 truncate text-right">{match.away_team}</span>
-                      <span className="text-lg shrink-0">{match.away_flag}</span>
+                    {/* Away */}
+                    <div className="flex items-center gap-1 flex-1 min-w-0 justify-end">
+                      <span className="text-xs sm:text-sm text-slate-200 truncate text-right leading-tight">{match.away_team}</span>
+                      <span className="text-base shrink-0">{match.away_flag}</span>
                     </div>
                   </div>
 
-                  {/* Real result row */}
-                  {played && (
-                    <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-500">
-                      <span>Resultado real:</span>
-                      <span className="font-mono font-bold text-white bg-teal-700 px-2 py-0.5 rounded">
-                        {match.home_goals_real} – {match.away_goals_real}
-                      </span>
-                      {scoreInfo && scoreInfo.breakdown.length > 0 && (
-                        <span className="text-teal-400">{scoreInfo.breakdown.join(' · ')}</span>
-                      )}
-                      {scoreInfo && scoreInfo.total === 0 && (
-                        <span className="text-slate-600">Sin puntos</span>
-                      )}
-                    </div>
+                  {/* Breakdown on mobile (below the row) */}
+                  {played && scoreInfo && scoreInfo.breakdown.length > 0 && (
+                    <div className="mt-1 sm:hidden text-xs text-teal-400">{scoreInfo.breakdown.join(' · ')}</div>
+                  )}
+                  {played && scoreInfo && scoreInfo.total === 0 && (
+                    <div className="mt-1 text-xs text-slate-600">Sin puntos</div>
                   )}
 
                   {errors[match.id] && (

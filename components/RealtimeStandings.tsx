@@ -59,15 +59,14 @@ export default function RealtimeStandings({
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-slate-400 text-sm">
-          Fase de grupos ·{' '}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="text-slate-400 text-xs sm:text-sm">
           <span className={`transition-colors ${flash ? 'text-teal-400' : ''}`}>
-            {played} de 72 partidos jugados
+            {played}/72 jugados
           </span>{' '}
           · 28 participantes
         </p>
-        <span className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+        <span className={`text-xs px-2 py-1 rounded-full border transition-colors shrink-0 ${
           flash ? 'border-teal-500 text-teal-400' : 'border-slate-700 text-slate-600'
         }`}>
           {flash ? '⚡ Actualizado' : '● En vivo'}
@@ -78,12 +77,12 @@ export default function RealtimeStandings({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-700 text-slate-400 text-xs uppercase tracking-wider">
-              <th className="text-left px-4 py-3 w-10">#</th>
-              <th className="text-left px-4 py-3">Participante</th>
-              <th className="text-center px-3 py-3 hidden sm:table-cell">Exactos</th>
-              <th className="text-center px-3 py-3 hidden sm:table-cell">Correctos</th>
-              <th className="text-right px-4 py-3">Puntos</th>
-              <th className="text-right px-4 py-3 hidden sm:table-cell">Premio</th>
+              <th className="text-left px-2 sm:px-4 py-3 w-8 sm:w-10">#</th>
+              <th className="text-left px-2 sm:px-4 py-3">Participante</th>
+              <th className="text-center px-2 py-3 hidden sm:table-cell">Exactos</th>
+              <th className="text-center px-2 py-3 hidden sm:table-cell">Correctos</th>
+              <th className="text-right px-2 sm:px-4 py-3">Pts</th>
+              <th className="text-right px-2 sm:px-4 py-3 hidden sm:table-cell">Premio</th>
             </tr>
           </thead>
           <tbody>
@@ -95,19 +94,23 @@ export default function RealtimeStandings({
                   key={p.id}
                   className={`border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors ${isTop3 ? 'bg-slate-700/20' : ''}`}
                 >
-                  <td className="px-4 py-3 text-slate-500 font-mono text-xs">{medal ?? i + 1}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 sm:px-4 py-2.5 text-slate-500 font-mono text-xs text-center">{medal ?? i + 1}</td>
+                  <td className="px-2 sm:px-4 py-2.5">
                     <Link
                       href={`/participante/${p.id}`}
-                      className={`font-medium hover:text-teal-400 transition-colors ${isTop3 ? 'text-white' : 'text-slate-200'}`}
+                      className={`font-medium hover:text-teal-400 transition-colors text-sm ${isTop3 ? 'text-white' : 'text-slate-200'}`}
                     >
                       {p.name}
                     </Link>
+                    {/* Show exactos/correctos inline on mobile */}
+                    <span className="sm:hidden text-xs text-slate-500 ml-2">
+                      🎯{p.exact} ✓{p.correct}
+                    </span>
                   </td>
-                  <td className="px-3 py-3 text-center text-slate-400 hidden sm:table-cell">{p.exact}</td>
-                  <td className="px-3 py-3 text-center text-slate-400 hidden sm:table-cell">{p.correct}</td>
-                  <td className="px-4 py-3 text-right font-bold font-mono text-lg text-teal-400">{p.points}</td>
-                  <td className="px-4 py-3 text-right text-green-400 font-semibold text-sm hidden sm:table-cell">
+                  <td className="px-2 py-2.5 text-center text-slate-400 hidden sm:table-cell">{p.exact}</td>
+                  <td className="px-2 py-2.5 text-center text-slate-400 hidden sm:table-cell">{p.correct}</td>
+                  <td className="px-2 sm:px-4 py-2.5 text-right font-bold font-mono text-base sm:text-lg text-teal-400">{p.points}</td>
+                  <td className="px-2 sm:px-4 py-2.5 text-right text-green-400 font-semibold text-sm hidden sm:table-cell">
                     {prizes[i] ?? ''}
                   </td>
                 </tr>

@@ -23,8 +23,8 @@ export default async function StandingsPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-1">⚽ Gran Quiniela Familiar · Mundial 2026</h1>
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-white mb-1">⚽ Gran Quiniela Familiar · Mundial 2026</h1>
       </div>
 
       <RealtimeStandings initialStandings={standings} initialPlayed={played} />

@@ -19,33 +19,45 @@ function MatchRow({ match, exactCount, correctCount }: {
   const played = match.home_goals_real !== null && match.away_goals_real !== null
 
   return (
-    <div className="flex items-center gap-3 py-3 px-4 border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
-      <span className="text-slate-500 text-xs font-mono w-6 shrink-0">{match.id}</span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-base">{match.home_flag}</span>
-          <span className="font-medium text-slate-200 truncate">{match.home_team}</span>
+    <div className="py-2.5 px-3 sm:px-4 border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
+      {/* Teams row */}
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <span className="text-slate-500 text-xs font-mono w-5 shrink-0">{match.id}</span>
+
+        {/* Home */}
+        <div className="flex items-center gap-1 flex-1 min-w-0">
+          <span className="text-sm shrink-0">{match.home_flag}</span>
+          <span className="text-xs sm:text-sm font-medium text-slate-200 truncate">{match.home_team}</span>
+        </div>
+
+        {/* Score or vs */}
+        <div className="shrink-0">
           {played ? (
-            <span className="font-bold text-white px-2 py-0.5 bg-teal-600 rounded text-xs font-mono">
-              {match.home_goals_real} - {match.away_goals_real}
+            <span className="font-bold text-white px-1.5 py-0.5 bg-teal-600 rounded text-xs font-mono whitespace-nowrap">
+              {match.home_goals_real}–{match.away_goals_real}
             </span>
           ) : (
-            <span className="text-slate-500 text-xs px-2">vs</span>
+            <span className="text-slate-600 text-xs">vs</span>
           )}
-          <span className="font-medium text-slate-200 truncate">{match.away_team}</span>
-          <span className="text-base">{match.away_flag}</span>
         </div>
-        <div className="text-xs text-slate-500 mt-0.5">{formatDate(match.match_date)}</div>
+
+        {/* Away */}
+        <div className="flex items-center gap-1 flex-1 min-w-0 justify-end">
+          <span className="text-xs sm:text-sm font-medium text-slate-200 truncate text-right">{match.away_team}</span>
+          <span className="text-sm shrink-0">{match.away_flag}</span>
+        </div>
+
+        {/* Stats / lock */}
+        {played && (
+          <div className="text-right text-xs shrink-0 ml-1">
+            <div className="text-yellow-400">🎯{exactCount}</div>
+            <div className="text-teal-400">✓{correctCount}</div>
+          </div>
+        )}
+        {!played && match.is_locked && (
+          <span className="text-xs text-red-400 shrink-0 ml-1">🔒</span>
+        )}
       </div>
-      {played && (
-        <div className="text-right text-xs shrink-0">
-          <div className="text-yellow-400">🎯 {exactCount}</div>
-          <div className="text-teal-400">✓ {correctCount}</div>
-        </div>
-      )}
-      {!played && match.is_locked && (
-        <span className="text-xs text-red-400 shrink-0">🔒</span>
-      )}
     </div>
   )
 }
