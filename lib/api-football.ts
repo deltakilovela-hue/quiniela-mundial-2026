@@ -8,9 +8,8 @@ const HEADERS = {
   'Content-Type': 'application/json',
 }
 
-// FIFA World Cup 2026 league ID — confirm with /football-get-popular-leagues
-// Set via env var WC_LEAGUE_ID once you verify it
-export const WC_LEAGUE_ID = process.env.WC_LEAGUE_ID ?? ''
+// FIFA World Cup league ID = 77 (confirmed via /football-get-popular-leagues)
+export const WC_LEAGUE_ID = process.env.WC_LEAGUE_ID ?? '77'
 
 export interface APIMatch {
   id: number | string
