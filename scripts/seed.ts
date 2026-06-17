@@ -34,7 +34,7 @@ async function seed() {
   for (const p of PARTICIPANTS) {
     const { error } = await supabase
       .from('participants')
-      .upsert({ name: p.name, pin: p.id.padStart(4, '0') }, { onConflict: 'name' })
+      .insert({ name: p.name, pin: p.id.padStart(4, '0') })
     if (error) console.error(`Error inserting ${p.name}:`, error.message)
   }
   console.log(`✓ ${PARTICIPANTS.length} participants inserted`)
