@@ -79,7 +79,7 @@ function normalizeMatch(raw: Record<string, unknown>): APIMatch {
   const reasonShort = (statusObj?.reason as Record<string, unknown>)?.short
   const statusStr = typeof raw.status === 'string'
     ? raw.status
-    : reasonShort ?? (statusObj?.finished ? 'FT' : '') ?? raw.statusShort ?? raw.state ?? ''
+    : reasonShort || (statusObj?.finished ? 'FT' : '') || String(raw.statusShort ?? raw.state ?? '')
 
   const status = String(statusStr).toUpperCase()
 
