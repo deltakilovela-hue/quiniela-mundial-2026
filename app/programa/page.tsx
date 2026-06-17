@@ -13,12 +13,6 @@ function formatDate(dateStr: string) {
   })
 }
 
-function formatTime(dateStr: string) {
-  const d = new Date(dateStr)
-  return d.toLocaleTimeString('es-MX', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City',
-  })
-}
 
 function MatchRow({ match }: { match: Match }) {
   const played = match.home_goals_real !== null && match.away_goals_real !== null
@@ -36,7 +30,7 @@ function MatchRow({ match }: { match: Match }) {
           ) : locked ? (
             <span className="text-xs text-red-400">🔒</span>
           ) : (
-            <span className="text-xs text-slate-600">{formatTime(match.match_date)}</span>
+            <span className="text-xs text-slate-600">—</span>
           )}
         </div>
 
