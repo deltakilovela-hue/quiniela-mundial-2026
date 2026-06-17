@@ -4,18 +4,21 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { calcStandings } from '@/lib/scoring'
 import Link from 'next/link'
+import { Zap } from 'lucide-react'
 
-type Standing = {
-  id: string
-  name: string
-  points: number
-  exact: number
-  correct: number
-}
-
+type Standing = { id: string; name: string; points: number; exact: number; correct: number }
 type Match = { id: string; home_goals_real: number | null; away_goals_real: number | null }
 type Prediction = { participant_id: string; match_id: string; home_goals: number; away_goals: number }
 type Participant = { id: string; name: string }
+
+const PRIZES = ['$7,500', '$4,000', '$2,500']
+const MEDAL_COLORS = [
+  'from-yellow-500/20 border-yellow-500/30',
+  'from-slate-400/15 border-slate-400/20',
+  'from-amber-700/15 border-amber-700/20',
+]
+const MEDAL_TEXT = ['text-yellow-400', 'text-slate-300', 'text-amber-600']
+const MEDALS = ['🥇', '🥈', '🥉']
 
 export default function RealtimeStandings({
   initialStandings,
@@ -34,88 +37,90 @@ export default function RealtimeStandings({
       supabase.from('matches').select('id, home_goals_real, away_goals_real'),
       supabase.from('predictions').select('participant_id, match_id, home_goals, away_goals'),
     ])
-    const newStandings = calcStandings(
+    setStandings(calcStandings(
       (participants as Participant[]) ?? [],
       (matches as Match[]) ?? [],
       (predictions as Prediction[]) ?? []
-    )
-    setStandings(newStandings)
+    ))
     setPlayed((matches ?? []).filter((m: Match) => m.home_goals_real !== null).length)
     setFlash(true)
     setTimeout(() => setFlash(false), 1500)
   }
 
   useEffect(() => {
-    const channel = supabase
-      .channel('standings-realtime')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches' }, () => {
-        refresh()
-      })
+    const ch = supabase.channel('standings-rt')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches' }, refresh)
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => { supabase.removeChannel(ch) }
   }, [])
 
-  const prizes = ['$7,500', '$4,000', '$2,500']
+  const top3 = standings.slice(0, 3)
+  const rest  = standings.slice(3)
 
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="text-slate-400 text-xs sm:text-sm">
-          <span className={`transition-colors ${flash ? 'text-teal-400' : ''}`}>
-            {played}/72 jugados
-          </span>{' '}
-          · 28 participantes
-        </p>
-        <span className={`text-xs px-2 py-1 rounded-full border transition-colors shrink-0 ${
-          flash ? 'border-teal-500 text-teal-400' : 'border-slate-700 text-slate-600'
-        }`}>
-          {flash ? '⚡ Actualizado' : '● En vivo'}
-        </span>
+    <div className="space-y-4">
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold text-white">Clasificación</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-slate-600 text-xs">{played}/72 jugados</span>
+          <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-all ${
+            flash
+              ? 'border-cyan-500/60 text-cyan-400 bg-cyan-950/40'
+              : 'border-white/8 text-slate-600'
+          }`}>
+            <Zap size={10} />
+            {flash ? 'Actualizado' : 'En vivo'}
+          </span>
+        </div>
       </div>
 
-      <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+      {/* Top 3 podium cards */}
+      <div className="grid grid-cols-3 gap-2">
+        {top3.map((p, i) => (
+          <Link
+            key={p.id}
+            href={`/participante/${p.id}`}
+            className={`rounded-xl border bg-gradient-to-b ${MEDAL_COLORS[i]} to-transparent p-3 sm:p-4 text-center cursor-pointer hover:scale-[1.02] transition-transform`}
+          >
+            <div className="text-xl sm:text-2xl mb-1">{MEDALS[i]}</div>
+            <div className="text-xs sm:text-sm font-semibold text-white truncate">{p.name}</div>
+            <div className={`text-xl sm:text-2xl font-bold font-mono mt-1 text-glow-teal ${MEDAL_TEXT[i]}`}>
+              {p.points}
+            </div>
+            <div className="text-xs text-slate-500 mt-0.5">pts</div>
+            <div className={`text-xs font-semibold mt-2 ${MEDAL_TEXT[i]}`}>{PRIZES[i]}</div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Rest of standings */}
+      <div className="rounded-xl border border-white/6 bg-slate-900/40 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-700 text-slate-400 text-xs uppercase tracking-wider">
-              <th className="text-left px-2 sm:px-4 py-3 w-8 sm:w-10">#</th>
-              <th className="text-left px-2 sm:px-4 py-3">Participante</th>
-              <th className="text-center px-2 py-3 hidden sm:table-cell">Exactos</th>
-              <th className="text-center px-2 py-3 hidden sm:table-cell">Correctos</th>
-              <th className="text-right px-2 sm:px-4 py-3">Pts</th>
-              <th className="text-right px-2 sm:px-4 py-3 hidden sm:table-cell">Premio</th>
+            <tr className="border-b border-white/5 text-slate-600 text-xs uppercase tracking-wider">
+              <th className="text-left px-3 sm:px-4 py-2.5 w-8">#</th>
+              <th className="text-left px-3 sm:px-4 py-2.5">Participante</th>
+              <th className="text-center px-2 py-2.5 hidden sm:table-cell">🎯</th>
+              <th className="text-center px-2 py-2.5 hidden sm:table-cell">✓</th>
+              <th className="text-right px-3 sm:px-4 py-2.5">Pts</th>
             </tr>
           </thead>
           <tbody>
-            {standings.map((p, i) => {
-              const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
-              const isTop3 = i < 3
-              return (
-                <tr
-                  key={p.id}
-                  className={`border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors ${isTop3 ? 'bg-slate-700/20' : ''}`}
-                >
-                  <td className="px-2 sm:px-4 py-2.5 text-slate-500 font-mono text-xs text-center">{medal ?? i + 1}</td>
-                  <td className="px-2 sm:px-4 py-2.5">
-                    <Link
-                      href={`/participante/${p.id}`}
-                      className={`font-medium hover:text-teal-400 transition-colors text-sm ${isTop3 ? 'text-white' : 'text-slate-200'}`}
-                    >
-                      {p.name}
-                    </Link>
-                    {/* Show exactos/correctos inline on mobile */}
-                    <span className="sm:hidden text-xs text-slate-500 ml-2">
-                      🎯{p.exact} ✓{p.correct}
-                    </span>
-                  </td>
-                  <td className="px-2 py-2.5 text-center text-slate-400 hidden sm:table-cell">{p.exact}</td>
-                  <td className="px-2 py-2.5 text-center text-slate-400 hidden sm:table-cell">{p.correct}</td>
-                  <td className="px-2 sm:px-4 py-2.5 text-right font-bold font-mono text-base sm:text-lg text-teal-400">{p.points}</td>
-                  <td className="px-2 sm:px-4 py-2.5 text-right text-green-400 font-semibold text-sm hidden sm:table-cell">
-                    {prizes[i] ?? ''}
-                  </td>
-                </tr>
-              )
-            })}
+            {rest.map((p, i) => (
+              <tr key={p.id} className="border-b border-white/4 hover:bg-white/3 transition-colors">
+                <td className="px-3 sm:px-4 py-2.5 text-slate-600 text-xs font-mono">{i + 4}</td>
+                <td className="px-3 sm:px-4 py-2.5">
+                  <Link href={`/participante/${p.id}`} className="text-slate-300 hover:text-white transition-colors text-sm font-medium cursor-pointer">
+                    {p.name}
+                  </Link>
+                  <span className="sm:hidden text-xs text-slate-600 ml-2">🎯{p.exact} ✓{p.correct}</span>
+                </td>
+                <td className="px-2 py-2.5 text-center text-slate-500 text-xs hidden sm:table-cell">{p.exact}</td>
+                <td className="px-2 py-2.5 text-center text-slate-500 text-xs hidden sm:table-cell">{p.correct}</td>
+                <td className="px-3 sm:px-4 py-2.5 text-right font-bold font-mono text-cyan-400">{p.points}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
