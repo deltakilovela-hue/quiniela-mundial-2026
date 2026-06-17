@@ -1,5 +1,14 @@
 import { getServiceClient } from '@/lib/supabase'
-import { fetchFixtures, FINISHED_STATUSES, LIVE_STATUSES, type APIFixture } from '@/lib/api-football'
+import {
+  fetchLiveMatches,
+  fetchMatchesByDate,
+  fetchLeagueMatchesByDate,
+  formatDateParam,
+  FINISHED_STATUSES,
+  LIVE_STATUSES,
+  WC_LEAGUE_ID,
+  type APIMatch,
+} from '@/lib/api-football'
 
 export interface SyncResult {
   updated: number
@@ -8,11 +17,11 @@ export interface SyncResult {
   fixtures_fetched: number
 }
 
-// Maps API-Football team names to our team names in seed-data
-// Add more mappings as needed when the tournament starts
+// Maps API team names (English) → our Spanish names in seed-data
 const TEAM_NAME_MAP: Record<string, string> = {
   'United States': 'Estados Unidos',
   'USA': 'Estados Unidos',
+  'US': 'Estados Unidos',
   'Mexico': 'México',
   'Germany': 'Alemania',
   'France': 'Francia',
@@ -50,8 +59,8 @@ const TEAM_NAME_MAP: Record<string, string> = {
   'Romania': 'Rumania',
   'Slovakia': 'Eslovaquia',
   'Australia': 'Australia',
-  "Ivory Coast": "Costa de Marfil",
-  "Côte d'Ivoire": "Costa de Marfil",
+  "Ivory Coast": 'Costa de Marfil',
+  "Côte d'Ivoire": 'Costa de Marfil',
   'Algeria': 'Argelia',
   'Kenya': 'Kenia',
   'Iraq': 'Irak',
@@ -63,70 +72,97 @@ const TEAM_NAME_MAP: Record<string, string> = {
   'Ireland': 'Irlanda',
 }
 
-function normalizeTeamName(name: string): string {
-  return TEAM_NAME_MAP[name] ?? name
+function normalize(name: string): string {
+  return (TEAM_NAME_MAP[name] ?? name).toLowerCase().trim()
+}
+
+// Process a list of API matches and update our DB
+async function processMatches(matches: APIMatch[], result: SyncResult) {
+  const supabase = getServiceClient()
+
+  for (const match of matches) {
+    result.fixtures_fetched++
+
+    const status = (match.status ?? '').toUpperCase()
+    const isLive = LIVE_STATUSES.some((s) => status.includes(s))
+    const isFinished = FINISHED_STATUSES.some((s) => status.includes(s))
+
+    if (!isLive && !isFinished) continue
+
+    const homeTeam = normalize(match.homeTeam.name)
+    const awayTeam = normalize(match.awayTeam.name)
+
+    // Find match in our DB — compare normalized names
+    const { data: dbMatches } = await supabase
+      .from('matches')
+      .select('id, is_locked, home_goals_real, home_team, away_team')
+
+    const dbMatch = (dbMatches ?? []).find(
+      (m: { home_team: string; away_team: string }) =>
+        normalize(m.home_team) === homeTeam && normalize(m.away_team) === awayTeam
+    )
+
+    if (!dbMatch) continue
+
+    // Lock if live
+    if (isLive && !dbMatch.is_locked) {
+      const { error } = await supabase
+        .from('matches')
+        .update({ is_locked: true })
+        .eq('id', dbMatch.id)
+      if (!error) result.locked++
+    }
+
+    // Update result if finished
+    if (isFinished) {
+      const homeGoals = match.score?.home ?? null
+      const awayGoals = match.score?.away ?? null
+
+      if (homeGoals === null || awayGoals === null) continue
+      // Skip if already stored
+      if (dbMatch.home_goals_real === homeGoals) continue
+
+      const { error } = await supabase
+        .from('matches')
+        .update({ home_goals_real: homeGoals, away_goals_real: awayGoals, is_locked: true })
+        .eq('id', dbMatch.id)
+
+      if (error) {
+        result.errors.push(`${dbMatch.id}: ${error.message}`)
+      } else {
+        result.updated++
+      }
+    }
+  }
 }
 
 export async function syncResults(): Promise<SyncResult> {
   const result: SyncResult = { updated: 0, locked: 0, errors: [], fixtures_fetched: 0 }
-  const supabase = getServiceClient()
 
   try {
-    const fixtures = await fetchFixtures()
-    result.fixtures_fetched = fixtures.length
+    // 1. Check live matches — lock them immediately
+    const liveMatches = await fetchLiveMatches()
+    await processMatches(liveMatches, result)
 
-    for (const fixture of fixtures) {
-      const status = fixture.fixture.status.short
-      const isFinished = FINISHED_STATUSES.includes(status)
-      const isLive = LIVE_STATUSES.includes(status)
+    // 2. Fetch today's matches (and yesterday as safety net)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(today.getDate() - 1)
 
-      // Lock match when it goes live
-      if (isLive || isFinished) {
-        const homeTeam = normalizeTeamName(fixture.teams.home.name)
-        const awayTeam = normalizeTeamName(fixture.teams.away.name)
+    const dates = [formatDateParam(yesterday), formatDateParam(today)]
 
-        // Find matching match in our DB by both team names
-        const { data: exactMatches } = await supabase
-          .from('matches')
-          .select('id, is_locked, home_goals_real')
-          .eq('home_team', homeTeam)
-          .eq('away_team', awayTeam)
+    for (const date of dates) {
+      let dayMatches: APIMatch[]
 
-        const match = exactMatches?.[0]
-        if (!match) continue
-
-        // Lock if going live and not already locked
-        if (isLive && !match.is_locked) {
-          await supabase.from('matches').update({ is_locked: true }).eq('id', match.id)
-          result.locked++
-        }
-
-        // Update result if finished
-        if (isFinished) {
-          const homeGoals = fixture.score.fulltime.home ?? fixture.goals.home
-          const awayGoals = fixture.score.fulltime.away ?? fixture.goals.away
-
-          if (homeGoals === null || awayGoals === null) continue
-
-          // Skip if already stored the same result
-          if (match.home_goals_real === homeGoals) continue
-
-          const { error } = await supabase
-            .from('matches')
-            .update({
-              home_goals_real: homeGoals,
-              away_goals_real: awayGoals,
-              is_locked: true,
-            })
-            .eq('id', match.id)
-
-          if (error) {
-            result.errors.push(`${match.id}: ${error.message}`)
-          } else {
-            result.updated++
-          }
-        }
+      if (WC_LEAGUE_ID) {
+        // If we know the WC league ID, filter precisely
+        dayMatches = await fetchLeagueMatchesByDate(date, WC_LEAGUE_ID)
+      } else {
+        // Otherwise fetch all matches that day and filter by known team names
+        dayMatches = await fetchMatchesByDate(date)
       }
+
+      await processMatches(dayMatches, result)
     }
   } catch (err) {
     result.errors.push(err instanceof Error ? err.message : String(err))
@@ -141,7 +177,6 @@ export async function syncResults(): Promise<SyncResult> {
       locked: result.locked,
       errors: result.errors,
     })
-    .then(() => {})
 
   return result
 }
