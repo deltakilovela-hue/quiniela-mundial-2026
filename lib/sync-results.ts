@@ -17,12 +17,35 @@ export interface SyncResult {
   fixtures_fetched: number
 }
 
-// Maps API team names (English) → our Spanish names in seed-data
+// Maps API team names (English) → our Spanish names in the DB
 const TEAM_NAME_MAP: Record<string, string> = {
-  'United States': 'Estados Unidos',
-  'USA': 'Estados Unidos',
-  'US': 'Estados Unidos',
+  // Americas
+  'United States': 'EE.UU.',
+  'USA': 'EE.UU.',
+  'US': 'EE.UU.',
   'Mexico': 'México',
+  'Canada': 'Canadá',
+  'Brazil': 'Brasil',
+  'Argentina': 'Argentina',
+  'Colombia': 'Colombia',
+  'Uruguay': 'Uruguay',
+  'Ecuador': 'Ecuador',
+  'Peru': 'Perú',
+  'Paraguay': 'Paraguay',
+  'Chile': 'Chile',
+  'Bolivia': 'Bolivia',
+  'Venezuela': 'Venezuela',
+  'Panama': 'Panamá',
+  'Costa Rica': 'Costa Rica',
+  'Honduras': 'Honduras',
+  'Guatemala': 'Guatemala',
+  'Cuba': 'Cuba',
+  'Haiti': 'Haití',
+  'Trinidad and Tobago': 'Trinidad y Tobago',
+  'Trinidad & Tobago': 'Trinidad y Tobago',
+  'Curacao': 'Curazao',
+  'Curaçao': 'Curazao',
+  // Europe
   'Germany': 'Alemania',
   'France': 'Francia',
   'Spain': 'España',
@@ -33,43 +56,55 @@ const TEAM_NAME_MAP: Record<string, string> = {
   'Croatia': 'Croacia',
   'Italy': 'Italia',
   'England': 'Inglaterra',
-  'Brazil': 'Brasil',
-  'Argentina': 'Argentina',
-  'Japan': 'Japón',
-  'South Korea': 'Corea del Sur',
-  'Korea Republic': 'Corea del Sur',
-  'Morocco': 'Marruecos',
-  'Senegal': 'Senegal',
-  'Nigeria': 'Nigeria',
-  'Colombia': 'Colombia',
-  'Uruguay': 'Uruguay',
+  'Scotland': 'Escocia',
   'Denmark': 'Dinamarca',
   'Switzerland': 'Suiza',
   'Austria': 'Austria',
   'Serbia': 'Serbia',
   'Sweden': 'Suecia',
-  'Scotland': 'Escocia',
-  'Saudi Arabia': 'Arabia Saudita',
-  'Ecuador': 'Ecuador',
-  'Ghana': 'Ghana',
-  'Canada': 'Canadá',
-  'Tunisia': 'Túnez',
-  'Peru': 'Perú',
-  'Costa Rica': 'Costa Rica',
+  'Norway': 'Noruega',
   'Romania': 'Rumania',
   'Slovakia': 'Eslovaquia',
+  'Czech Republic': 'Rep. Checa',
+  'Czechia': 'Rep. Checa',
+  'Bosnia and Herzegovina': 'Bosnia y Herz.',
+  'Bosnia & Herzegovina': 'Bosnia y Herz.',
+  'Bosnia': 'Bosnia y Herz.',
+  'Ireland': 'Irlanda',
+  // Asia / Middle East
+  'Japan': 'Japón',
+  'South Korea': 'Corea del Sur',
+  'Korea Republic': 'Corea del Sur',
+  'Saudi Arabia': 'Arabia Saudita',
+  'Iraq': 'Irak',
+  'Iran': 'Irán',
+  'Jordan': 'Jordania',
+  'Uzbekistan': 'Uzbekistán',
+  'Turkey': 'Turquía',
+  'Türkiye': 'Turquía',
   'Australia': 'Australia',
+  'New Zealand': 'Nueva Zelanda',
+  // Africa
+  'Morocco': 'Marruecos',
+  'Senegal': 'Senegal',
+  'Nigeria': 'Nigeria',
+  'Ghana': 'Ghana',
+  'Algeria': 'Argelia',
+  'Tunisia': 'Túnez',
+  'Egypt': 'Egipto',
+  'Cameroon': 'Camerún',
+  'South Africa': 'Sudáfrica',
   "Ivory Coast": 'Costa de Marfil',
   "Côte d'Ivoire": 'Costa de Marfil',
-  'Algeria': 'Argelia',
+  'Cape Verde': 'Cabo Verde',
+  'DR Congo': 'Congo RD',
+  'Democratic Republic of Congo': 'Congo RD',
+  'Congo DR': 'Congo RD',
+  'Congo': 'Congo RD',
   'Kenya': 'Kenia',
-  'Iraq': 'Irak',
-  'Cuba': 'Cuba',
-  'Guatemala': 'Guatemala',
-  'Trinidad and Tobago': 'Trinidad y Tobago',
-  'Czech Republic': 'República Checa',
-  'Cameroon': 'Camerún',
-  'Ireland': 'Irlanda',
+  'Qatar': 'Catar',
+  // Others
+  'Scotland': 'Escocia',
 }
 
 function normalize(name: string): string {
@@ -144,24 +179,13 @@ export async function syncResults(): Promise<SyncResult> {
     const liveMatches = await fetchLiveMatches()
     await processMatches(liveMatches, result)
 
-    // 2. Fetch today's matches (and yesterday as safety net)
+    // 2. Fetch today + yesterday by date (no league filter — WC uses multiple dynamic league IDs)
     const today = new Date()
     const yesterday = new Date(today)
     yesterday.setDate(today.getDate() - 1)
 
-    const dates = [formatDateParam(yesterday), formatDateParam(today)]
-
-    for (const date of dates) {
-      let dayMatches: APIMatch[]
-
-      if (WC_LEAGUE_ID) {
-        // If we know the WC league ID, filter precisely
-        dayMatches = await fetchLeagueMatchesByDate(date, WC_LEAGUE_ID)
-      } else {
-        // Otherwise fetch all matches that day and filter by known team names
-        dayMatches = await fetchMatchesByDate(date)
-      }
-
+    for (const date of [formatDateParam(yesterday), formatDateParam(today)]) {
+      const dayMatches = await fetchMatchesByDate(date)
       await processMatches(dayMatches, result)
     }
   } catch (err) {

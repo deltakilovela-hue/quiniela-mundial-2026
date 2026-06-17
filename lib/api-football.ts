@@ -33,41 +33,60 @@ export interface APIMatch {
 
 // Normalize different response shapes this API might return
 function normalizeMatch(raw: Record<string, unknown>): APIMatch {
-  // The API may nest data differently — handle both flat and nested
-  const home = (raw.homeTeam as Record<string, unknown>) ??
+  // This API uses { home: { name, score }, away: { name, score } }
+  // but also support homeTeam/away_team for other shapes
+  const homeObj = (raw.home as Record<string, unknown>) ??
+    (raw.homeTeam as Record<string, unknown>) ??
     (raw.home_team as Record<string, unknown>) ??
-    { name: raw.homeName ?? raw.home_name ?? '' }
-
-  const away = (raw.awayTeam as Record<string, unknown>) ??
-    (raw.away_team as Record<string, unknown>) ??
-    { name: raw.awayName ?? raw.away_name ?? '' }
-
-  const score = (raw.score as Record<string, unknown>) ??
-    (raw.goals as Record<string, unknown>) ??
     {}
 
+  const awayObj = (raw.away as Record<string, unknown>) ??
+    (raw.awayTeam as Record<string, unknown>) ??
+    (raw.away_team as Record<string, unknown>) ??
+    {}
+
+  const homeName = String(
+    homeObj.name ?? homeObj.longName ?? raw.homeName ?? raw.home_name ?? ''
+  )
+  const awayName = String(
+    awayObj.name ?? awayObj.longName ?? raw.awayName ?? raw.away_name ?? ''
+  )
+
+  // Score: try home.score / away.score first, then nested score objects
+  const scoreObj = (raw.score as Record<string, unknown>) ?? {}
+  const goalsObj = (raw.goals as Record<string, unknown>) ?? {}
+
   const homeGoals =
-    (score.fulltime as Record<string, unknown>)?.home ??
-    (score as Record<string, unknown>).home ??
+    (homeObj.score as number | null | undefined) ??
+    (scoreObj.fulltime as Record<string, unknown>)?.home ??
+    (scoreObj as Record<string, unknown>).home ??
+    (goalsObj as Record<string, unknown>).home ??
     raw.home_score ??
     raw.homeScore ??
     null
 
   const awayGoals =
-    (score.fulltime as Record<string, unknown>)?.away ??
-    (score as Record<string, unknown>).away ??
+    (awayObj.score as number | null | undefined) ??
+    (scoreObj.fulltime as Record<string, unknown>)?.away ??
+    (scoreObj as Record<string, unknown>).away ??
+    (goalsObj as Record<string, unknown>).away ??
     raw.away_score ??
     raw.awayScore ??
     null
 
-  const status = String(
-    raw.status ?? raw.statusShort ?? raw.state ?? raw.matchStatus ?? ''
-  ).toUpperCase()
+  // Status: this API uses status.reason.short = "FT" or status.finished = true
+  const statusObj = raw.status as Record<string, unknown> | undefined
+  const reasonShort = (statusObj?.reason as Record<string, unknown>)?.short
+  const statusStr = typeof raw.status === 'string'
+    ? raw.status
+    : reasonShort ?? (statusObj?.finished ? 'FT' : '') ?? raw.statusShort ?? raw.state ?? ''
+
+  const status = String(statusStr).toUpperCase()
 
   return {
     id: (raw.id ?? raw.matchId ?? raw.fixture_id ?? 0) as number,
-    homeTeam: { name: String((home as Record<string, unknown>).name ?? ''), id: (home as Record<string, unknown>).id as number },
-    awayTeam: { name: String((away as Record<string, unknown>).name ?? ''), id: (away as Record<string, unknown>).id as number },
+    homeTeam: { name: homeName, id: homeObj.id as number },
+    awayTeam: { name: awayName, id: awayObj.id as number },
     status,
     score: {
       home: homeGoals as number | null,
