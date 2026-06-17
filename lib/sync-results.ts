@@ -103,8 +103,6 @@ const TEAM_NAME_MAP: Record<string, string> = {
   'Congo': 'Congo RD',
   'Kenya': 'Kenia',
   'Qatar': 'Catar',
-  // Others
-  'Scotland': 'Escocia',
 }
 
 function normalize(name: string): string {
