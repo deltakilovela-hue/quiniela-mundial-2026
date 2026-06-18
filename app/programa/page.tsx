@@ -9,7 +9,7 @@ const GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L']
 function formatDate(dateStr: string) {
   const d = new Date(dateStr)
   return d.toLocaleDateString('es-MX', {
-    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Mexico_City',
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Regina',
   })
 }
 

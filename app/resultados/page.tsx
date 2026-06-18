@@ -8,7 +8,7 @@ const GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L']
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('es-MX', {
-    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Mexico_City',
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Regina',
   })
 }
 
@@ -17,7 +17,7 @@ function formatTime(dateStr: string) {
   // Check if time is a placeholder (midnight UTC = 6pm/7pm MX but unlikely for real kickoffs at exactly 00:00 UTC)
   // We detect placeholder times seeded as T18:00:00+00:00 or T12:00:00
   return d.toLocaleTimeString('es-MX', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City',
+    hour: '2-digit', minute: '2-digit', timeZone: 'America/Regina',
   })
 }
 

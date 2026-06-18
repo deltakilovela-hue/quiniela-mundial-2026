@@ -193,7 +193,7 @@ export default function AdminPage() {
               <div className="mb-4 p-3 bg-slate-700/50 rounded-lg text-xs text-slate-400 space-y-1">
                 <div className="flex justify-between">
                   <span>Último sync:</span>
-                  <span className="text-slate-200">{new Date(lastSync.synced_at).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })}</span>
+                  <span className="text-slate-200">{new Date(lastSync.synced_at).toLocaleString('es-MX', { timeZone: 'America/Regina' })}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Partidos consultados:</span>
@@ -253,7 +253,7 @@ export default function AdminPage() {
                   {syncLog.map((log) => (
                     <tr key={log.id} className="border-b border-slate-700/50">
                       <td className="px-4 py-2 text-slate-400">
-                        {new Date(log.synced_at).toLocaleTimeString('es-MX', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(log.synced_at).toLocaleTimeString('es-MX', { timeZone: 'America/Regina', hour: '2-digit', minute: '2-digit' })}
                       </td>
                       <td className="px-3 py-2 text-center text-slate-300">{log.fixtures_fetched}</td>
                       <td className="px-3 py-2 text-center text-green-400">{log.updated}</td>

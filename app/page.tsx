@@ -7,8 +7,8 @@ export const revalidate = 60
 
 export default async function StandingsPage() {
   // Use Mexico City date (not UTC) so "Hoy" matches what users actually see on their clock
-  const nowMX = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }) // YYYY-MM-DD
-  const tomorrowMX = new Date(new Date().getTime() + 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+  const nowMX = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Regina' }) // YYYY-MM-DD
+  const tomorrowMX = new Date(new Date().getTime() + 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Regina' })
 
   const todayStr = nowMX
   const tomorrowStr = tomorrowMX
