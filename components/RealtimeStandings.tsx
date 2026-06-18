@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, fetchAllPredictions } from '@/lib/supabase'
 import { calcStandings } from '@/lib/scoring'
 import Link from 'next/link'
 import { Zap } from 'lucide-react'
@@ -32,15 +32,15 @@ export default function RealtimeStandings({
   const [flash, setFlash] = useState(false)
 
   async function refresh() {
-    const [{ data: participants }, { data: matches }, { data: predictions }] = await Promise.all([
+    const [{ data: participants }, { data: matches }, predictions] = await Promise.all([
       supabase.from('participants').select('id, name'),
       supabase.from('matches').select('id, home_goals_real, away_goals_real'),
-      supabase.from('predictions').select('participant_id, match_id, home_goals, away_goals'),
+      fetchAllPredictions(),
     ])
     setStandings(calcStandings(
       (participants as Participant[]) ?? [],
       (matches as Match[]) ?? [],
-      (predictions as Prediction[]) ?? []
+      predictions as Prediction[]
     ))
     setPlayed((matches ?? []).filter((m: Match) => m.home_goals_real !== null).length)
     setFlash(true)

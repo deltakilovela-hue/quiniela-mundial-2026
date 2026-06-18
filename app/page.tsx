@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { supabase, fetchAllPredictions } from '@/lib/supabase'
 import { calcStandings } from '@/lib/scoring'
 import RealtimeStandings from '@/components/RealtimeStandings'
 import TodayMatches from '@/components/TodayMatches'
@@ -13,13 +13,13 @@ export default async function StandingsPage() {
   const todayStr = nowMX
   const tomorrowStr = tomorrowMX
 
-  const [{ data: participants }, { data: matches }, { data: predictions }] = await Promise.all([
+  const [{ data: participants }, { data: matches }, predictions] = await Promise.all([
     supabase.from('participants').select('id, name'),
     supabase.from('matches').select('*').order('match_date'),
-    supabase.from('predictions').select('participant_id, match_id, home_goals, away_goals'),
+    fetchAllPredictions(),
   ])
 
-  const standings = calcStandings(participants ?? [], matches ?? [], predictions ?? [])
+  const standings = calcStandings(participants ?? [], matches ?? [], predictions)
   const played = (matches ?? []).filter(m => m.home_goals_real !== null).length
 
   const todayMatches    = (matches ?? []).filter(m => m.match_date?.startsWith(todayStr))

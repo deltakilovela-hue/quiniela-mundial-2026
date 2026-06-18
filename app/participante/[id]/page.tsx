@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { supabase, fetchAllPredictions } from '@/lib/supabase'
 import { calcMatchScore } from '@/lib/scoring'
 import { notFound } from 'next/navigation'
 import PredictionGrid from './PredictionGrid'
@@ -14,15 +14,15 @@ export default async function ParticipantePage({
 }) {
   const { id } = await params
 
-  const [{ data: participant }, { data: matches }, { data: allPredictions }] = await Promise.all([
+  const [{ data: participant }, { data: matches }, allPredictions] = await Promise.all([
     supabase.from('participants').select('id, name').eq('id', id).single(),
     supabase.from('matches').select('*').order('match_date'),
-    supabase.from('predictions').select('participant_id, match_id, home_goals, away_goals'),
+    fetchAllPredictions(),
   ])
 
   if (!participant) notFound()
 
-  const myPredictions = (allPredictions ?? []).filter(p => p.participant_id === id)
+  const myPredictions = allPredictions.filter(p => p.participant_id === id)
 
   let totalPoints = 0
   let exactCount = 0
@@ -32,7 +32,7 @@ export default async function ParticipantePage({
     if (match.home_goals_real === null || match.away_goals_real === null) continue
     const myPred = myPredictions.find(p => p.match_id === match.id)
     if (!myPred) continue
-    const matchPreds = (allPredictions ?? []).filter(p => p.match_id === match.id)
+    const matchPreds = allPredictions.filter(p => p.match_id === match.id)
     const { total, base } = calcMatchScore(myPred, { home_goals: match.home_goals_real!, away_goals: match.away_goals_real! }, matchPreds)
     totalPoints += total
     if (myPred.home_goals === match.home_goals_real && myPred.away_goals === match.away_goals_real) exactCount++
@@ -86,7 +86,7 @@ export default async function ParticipantePage({
         participantName={participant.name}
         matches={matches ?? []}
         predMap={predMap}
-        allPredictions={allPredictions ?? []}
+        allPredictions={allPredictions}
       />
     </div>
   )

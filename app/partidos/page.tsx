@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { supabase, fetchAllPredictions } from '@/lib/supabase'
 import type { Match } from '@/lib/supabase'
 import Link from 'next/link'
 
@@ -57,15 +57,15 @@ function MatchRow({ match, exactCount, correctCount }: {
 }
 
 export default async function PartidosPage() {
-  const [{ data: matches }, { data: predictions }] = await Promise.all([
+  const [{ data: matches }, predictions] = await Promise.all([
     supabase.from('matches').select('*').order('match_date'),
-    supabase.from('predictions').select('match_id, home_goals, away_goals'),
+    fetchAllPredictions(),
   ])
 
   const played = (matches ?? []).filter(m => m.home_goals_real !== null).length
 
   function getStats(match: Match) {
-    const mp = (predictions ?? []).filter(p => p.match_id === match.id)
+    const mp = predictions.filter(p => p.match_id === match.id)
     const exactCount = mp.filter(p =>
       p.home_goals === match.home_goals_real && p.away_goals === match.away_goals_real
     ).length

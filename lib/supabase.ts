@@ -11,6 +11,27 @@ export function getServiceClient() {
   })
 }
 
+// Supabase caps any select at 1000 rows by default. With 28 participants × 72
+// matches = 2016 predictions, a plain select silently drops ~1000 rows, leaving
+// some participants with no predictions. This paginates through all of them.
+export async function fetchAllPredictions(
+  client = supabase,
+  columns = 'participant_id, match_id, home_goals, away_goals'
+): Promise<Array<{ participant_id: string; match_id: string; home_goals: number; away_goals: number }>> {
+  const all: Array<{ participant_id: string; match_id: string; home_goals: number; away_goals: number }> = []
+  const PAGE = 1000
+  let from = 0
+  for (;;) {
+    const { data, error } = await client.from('predictions').select(columns).range(from, from + PAGE - 1)
+    if (error) throw error
+    if (!data || data.length === 0) break
+    all.push(...(data as unknown as typeof all))
+    if (data.length < PAGE) break
+    from += PAGE
+  }
+  return all
+}
+
 export type Participant = {
   id: string
   name: string
