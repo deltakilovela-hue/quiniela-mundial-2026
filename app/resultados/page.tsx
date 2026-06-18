@@ -1,7 +1,8 @@
 import { supabase } from '@/lib/supabase'
 import type { Match } from '@/lib/supabase'
+import AutoRefresh from '@/components/AutoRefresh'
 
-export const revalidate = 60
+export const revalidate = 30
 
 const GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L']
 
@@ -107,8 +108,18 @@ export default async function ResultadosPage() {
 
   const groupMatches = (g: string) => all.filter(m => m.group === g)
 
+  // Detect if any match is locked but not yet finished (= in progress right now)
+  const { data: locked } = await supabase
+    .from('matches')
+    .select('id')
+    .eq('is_locked', true)
+    .is('home_goals_real', null)
+    .limit(1)
+  const hasLiveMatches = (locked?.length ?? 0) > 0
+
   return (
     <div className="space-y-6">
+      <AutoRefresh hasLiveMatches={hasLiveMatches} />
 
       {/* Header */}
       <div className="text-center space-y-1">

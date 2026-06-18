@@ -9,12 +9,104 @@ import {
   WC_LEAGUE_ID,
   type APIMatch,
 } from '@/lib/api-football'
+import { fetchESPNMatchesByDate, fetchESPNGoals } from '@/lib/espn-football'
 
 export interface SyncResult {
   updated: number
   locked: number
+  scorers_updated: number
   errors: string[]
   fixtures_fetched: number
+}
+
+// Maps Spanish DB name → ESPN English display name
+const ES_TO_ESPN: Record<string, string> = {
+  'México': 'Mexico', 'Sudáfrica': 'South Africa', 'Corea del Sur': 'South Korea',
+  'Rep. Checa': 'Czechia', 'Canadá': 'Canada', 'EE.UU.': 'United States',
+  'Brasil': 'Brazil', 'Panamá': 'Panama', 'Haití': 'Haiti',
+  'Trinidad y Tobago': 'Trinidad and Tobago', 'Curazao': 'Curaçao',
+  'Alemania': 'Germany', 'Francia': 'France', 'España': 'Spain',
+  'Países Bajos': 'Netherlands', 'Bélgica': 'Belgium', 'Croacia': 'Croatia',
+  'Italia': 'Italy', 'Inglaterra': 'England', 'Escocia': 'Scotland',
+  'Dinamarca': 'Denmark', 'Suiza': 'Switzerland', 'Suecia': 'Sweden',
+  'Noruega': 'Norway', 'Rumania': 'Romania', 'Eslovaquia': 'Slovakia',
+  'Bosnia y Herz.': 'Bosnia-Herzegovina', 'Japón': 'Japan',
+  'Arabia Saudita': 'Saudi Arabia', 'Irak': 'Iraq', 'Irán': 'Iran',
+  'Jordania': 'Jordan', 'Uzbekistán': 'Uzbekistan', 'Turquía': 'Turkey',
+  'Nueva Zelanda': 'New Zealand', 'Marruecos': 'Morocco', 'Argelia': 'Algeria',
+  'Túnez': 'Tunisia', 'Egipto': 'Egypt', 'Camerún': 'Cameroon',
+  'Costa de Marfil': 'Ivory Coast', 'Cabo Verde': 'Cape Verde',
+  'Congo RD': 'Congo DR', 'Kenia': 'Kenya', 'Catar': 'Qatar',
+}
+
+function normESPN(name: string) {
+  return name.toLowerCase().replace(/[^a-z]/g, '')
+}
+
+// Sync goal scorers from ESPN for all recently finished matches
+async function syncScorers(result: SyncResult) {
+  const supabase = getServiceClient()
+
+  // Fetch finished matches from the last 2 days that might need scorers
+  const twoDaysAgo = new Date()
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+
+  const { data: matches } = await supabase
+    .from('matches')
+    .select('id, home_team, away_team, match_date, scorers, home_goals_real')
+    .not('home_goals_real', 'is', null)
+    .gte('match_date', twoDaysAgo.toISOString())
+
+  if (!matches?.length) return
+
+  // Build ESPN match cache for relevant dates
+  const espnByDate: Record<string, Awaited<ReturnType<typeof fetchESPNMatchesByDate>>> = {}
+  const dateParams = new Set<string>()
+
+  for (const m of matches) {
+    const base = m.match_date?.slice(0, 10).replace(/-/g, '') ?? ''
+    if (base) {
+      dateParams.add(base)
+      // Also add ±1 day for timezone shifts
+      const d = new Date(m.match_date)
+      dateParams.add(new Date(d.getTime() - 86400000).toISOString().slice(0,10).replace(/-/g,''))
+      dateParams.add(new Date(d.getTime() + 86400000).toISOString().slice(0,10).replace(/-/g,''))
+    }
+  }
+
+  await Promise.all([...dateParams].map(async (p) => {
+    if (!espnByDate[p]) espnByDate[p] = await fetchESPNMatchesByDate(p)
+  }))
+
+  const allESPN = Object.values(espnByDate).flat()
+
+  for (const match of matches) {
+    const homeEN = ES_TO_ESPN[match.home_team] ?? match.home_team
+    const awayEN = ES_TO_ESPN[match.away_team] ?? match.away_team
+    const nH = normESPN(homeEN)
+    const nA = normESPN(awayEN)
+
+    const espnMatch = allESPN.find(e => {
+      const eH = normESPN(e.homeTeam)
+      const eA = normESPN(e.awayTeam)
+      return (eH.includes(nH) || nH.includes(eH)) && (eA.includes(nA) || nA.includes(eA))
+    })
+
+    if (!espnMatch) continue
+
+    const goals = await fetchESPNGoals(espnMatch.id)
+    if (!goals.length) continue
+
+    const scorersStr = goals.map(g => `${g.scorer} ${g.minute}`).join(' · ')
+    if (match.scorers === scorersStr) continue
+
+    const { error } = await supabase
+      .from('matches')
+      .update({ scorers: scorersStr })
+      .eq('id', match.id)
+
+    if (!error) result.scorers_updated++
+  }
 }
 
 // Maps API team names (English) → our Spanish names in the DB
@@ -170,7 +262,7 @@ async function processMatches(matches: APIMatch[], result: SyncResult) {
 }
 
 export async function syncResults(): Promise<SyncResult> {
-  const result: SyncResult = { updated: 0, locked: 0, errors: [], fixtures_fetched: 0 }
+  const result: SyncResult = { updated: 0, locked: 0, scorers_updated: 0, errors: [], fixtures_fetched: 0 }
 
   try {
     // 1. Check live matches — lock them immediately
@@ -186,6 +278,9 @@ export async function syncResults(): Promise<SyncResult> {
       const dayMatches = await fetchMatchesByDate(date)
       await processMatches(dayMatches, result)
     }
+
+    // 3. Sync goal scorers from ESPN for recently finished matches
+    await syncScorers(result)
   } catch (err) {
     result.errors.push(err instanceof Error ? err.message : String(err))
   }
