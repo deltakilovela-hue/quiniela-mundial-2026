@@ -24,49 +24,51 @@ export function calcMatchScore(
   let base = 0
   let bonus = 0
 
+  // Scoring matches the official Excel calculator exactly. The three base
+  // components are INDEPENDENT and additive (a goal can match even if the
+  // overall result is wrong):
+  //   +2  correct result (winner or draw)
+  //   +1  at least one goal matches exactly (home OR away)
+  //   +2  exact score (both goals)
+  // Then a single bonus tier applies only when the score is exact, based on
+  // how many people (including you) nailed the exact score:
+  //   exactCount == 1  → +5  (you were the only one)
+  //   exactCount <= 5  → +3  (hard score, few got it)
   const predResult = getResult(pred.home_goals, pred.away_goals)
   const realResult = getResult(real.home_goals, real.away_goals)
 
   const correctResult = predResult === realResult
-  const exactScore = pred.home_goals === real.home_goals && pred.away_goals === real.away_goals
   const homeGoalCorrect = pred.home_goals === real.home_goals
   const awayGoalCorrect = pred.away_goals === real.away_goals
+  const exactScore = homeGoalCorrect && awayGoalCorrect
 
   if (correctResult) {
     base += 2
     breakdown.push('+2 resultado correcto')
-  } else {
-    return { base: 0, bonus: 0, total: 0, breakdown: [] }
+  }
+
+  if (homeGoalCorrect || awayGoalCorrect) {
+    base += 1
+    breakdown.push('+1 un gol exacto')
   }
 
   if (exactScore) {
     base += 2
     breakdown.push('+2 marcador exacto')
-  } else {
-    if (homeGoalCorrect || awayGoalCorrect) {
-      base += 1
-      breakdown.push('+1 un gol exacto')
-    }
   }
 
-  // Bono exacto: ≤5 personas aciertan el marcador exacto
+  // Bonus tiers apply only on an exact score (mutually exclusive).
   if (exactScore) {
     const exactCount = allPreds.filter(
       (p) => p.home_goals === real.home_goals && p.away_goals === real.away_goals
     ).length
-    if (exactCount <= 5) {
+    if (exactCount === 1) {
+      bonus += 5
+      breakdown.push('+5 bono único (solo tú)')
+    } else if (exactCount <= 5) {
       bonus += 3
-      breakdown.push(`+3 bono marcador difícil (${exactCount} personas)`)
+      breakdown.push(`+3 bono difícil (${exactCount} aciertan)`)
     }
-  }
-
-  // Bono sorpresa: solo 1 persona acierta el resultado
-  const correctCount = allPreds.filter(
-    (p) => getResult(p.home_goals, p.away_goals) === realResult
-  ).length
-  if (correctCount === 1 && correctResult) {
-    bonus += 5
-    breakdown.push('+5 bono sorpresa (única persona)')
   }
 
   const total = base + bonus

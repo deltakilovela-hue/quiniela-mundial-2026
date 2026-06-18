@@ -79,7 +79,7 @@ export default async function StandingsPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="w-5 h-5 rounded bg-orange-900/60 text-orange-400 flex items-center justify-center font-bold text-xs shrink-0">+5</span>
-            <span>Bono sorpresa: solo 1 acierta el resultado</span>
+            <span>Bono único: solo 1 acierta el marcador exacto</span>
           </div>
         </div>
       </div>
