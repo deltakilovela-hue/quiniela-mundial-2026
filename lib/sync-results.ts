@@ -94,14 +94,6 @@ async function syncFromESPN(result: SyncResult) {
 
     const updates: Record<string, unknown> = {}
 
-    // Update kickoff time if it's a placeholder (ends in T12:00:00 or T00:00:00)
-    const currentDate = dbMatch.match_date ?? ''
-    const isPlaceholderTime = currentDate.includes('T12:00:00') || currentDate.includes('T00:00:00')
-    if (isPlaceholderTime && espnMatch.kickoffUTC) {
-      updates.match_date = espnMatch.kickoffUTC
-      result.time_updated++
-    }
-
     // Lock if live
     if (espnMatch.status === 'live' && !dbMatch.is_locked) {
       updates.is_locked = true
