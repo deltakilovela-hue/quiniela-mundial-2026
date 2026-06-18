@@ -109,12 +109,11 @@ async function syncFromESPN(result: SyncResult) {
         result.updated++
       }
 
-      // Fetch and save scorers
-      const goals = await fetchESPNGoals(espnMatch.id)
-      if (goals.length > 0) {
-        const scorersStr = goals.map(g => `${g.scorer} ${g.minute}`).join(' · ')
-        if (dbMatch.scorers !== scorersStr) {
-          updates.scorers = scorersStr
+      // Always fetch scorers for finished matches (not just when score changes)
+      if (!dbMatch.scorers) {
+        const goals = await fetchESPNGoals(espnMatch.id)
+        if (goals.length > 0) {
+          updates.scorers = goals.map(g => `${g.scorer} ${g.minute}`).join(' · ')
           result.scorers_updated++
         }
       }
