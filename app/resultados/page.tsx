@@ -52,10 +52,14 @@ function MatchResult({ match: m }: { match: Match }) {
 
       </div>
 
-      {/* Scorers row (shown when data is available) */}
-      {(m as Match & { scorers?: string }).scorers && (
-        <div className="mt-2 flex justify-center">
-          <span className="text-xs text-slate-500 text-center">{(m as Match & { scorers?: string }).scorers}</span>
+      {/* Scorers */}
+      {m.scorers && (
+        <div className="mt-2 flex justify-center gap-1 flex-wrap px-2">
+          {m.scorers.split(' · ').map((s, i) => (
+            <span key={i} className="inline-flex items-center gap-1 text-xs text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded-full border border-white/5">
+              <span className="text-slate-600">⚽</span>{s}
+            </span>
+          ))}
         </div>
       )}
 
@@ -93,7 +97,7 @@ function GroupResults({ group, matches }: { group: string; matches: Match[] }) {
 export default async function ResultadosPage() {
   const { data: matches } = await supabase
     .from('matches')
-    .select('*')
+    .select('id, group, match_date, home_team, away_team, home_flag, away_flag, home_goals_real, away_goals_real, is_locked, scorers')
     .not('home_goals_real', 'is', null)
     .order('match_date')
 

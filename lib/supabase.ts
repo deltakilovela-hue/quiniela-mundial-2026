@@ -28,6 +28,7 @@ export type Match = {
   home_goals_real: number | null
   away_goals_real: number | null
   is_locked: boolean
+  scorers?: string | null
 }
 
 export type Prediction = {
