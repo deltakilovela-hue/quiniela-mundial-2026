@@ -9,13 +9,10 @@ export const revalidate = 30
 
 export default async function ParticipantePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ pin?: string }>
 }) {
   const { id } = await params
-  const { pin } = await searchParams
 
   const [{ data: participant }, { data: matches }, { data: allPredictions }] = await Promise.all([
     supabase.from('participants').select('id, name').eq('id', id).single(),
@@ -87,7 +84,6 @@ export default async function ParticipantePage({
       <PredictionGrid
         participantId={id}
         participantName={participant.name}
-        pin={pin ?? ''}
         matches={matches ?? []}
         predMap={predMap}
         allPredictions={allPredictions ?? []}

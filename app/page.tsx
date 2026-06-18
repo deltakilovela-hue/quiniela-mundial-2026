@@ -6,12 +6,12 @@ import TodayMatches from '@/components/TodayMatches'
 export const revalidate = 60
 
 export default async function StandingsPage() {
-  const today = new Date()
-  const tomorrow = new Date(today)
-  tomorrow.setDate(today.getDate() + 1)
+  // Use Mexico City date (not UTC) so "Hoy" matches what users actually see on their clock
+  const nowMX = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }) // YYYY-MM-DD
+  const tomorrowMX = new Date(new Date().getTime() + 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
 
-  const todayStr  = today.toISOString().slice(0, 10)
-  const tomorrowStr = tomorrow.toISOString().slice(0, 10)
+  const todayStr = nowMX
+  const tomorrowStr = tomorrowMX
 
   const [{ data: participants }, { data: matches }, { data: predictions }] = await Promise.all([
     supabase.from('participants').select('id, name'),

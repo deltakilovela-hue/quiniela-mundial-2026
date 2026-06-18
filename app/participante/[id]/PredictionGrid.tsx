@@ -10,11 +10,11 @@ type PredEntry = { home_goals: number; away_goals: number }
 const GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L']
 
 export default function PredictionGrid({
-  participantId, participantName, pin, matches, predMap, allPredictions,
+  participantId, matches, predMap, allPredictions,
 }: {
   participantId: string
   participantName: string
-  pin: string
+  pin?: string
   matches: Match[]
   predMap: Record<string, PredEntry>
   allPredictions: Omit<Prediction, 'id'>[]
@@ -43,7 +43,7 @@ export default function PredictionGrid({
     const res = await fetch('/api/predictions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ participant_id: participantId, match_id: matchId, home_goals: pred.home_goals, away_goals: pred.away_goals, pin }),
+      body: JSON.stringify({ participant_id: participantId, match_id: matchId, home_goals: pred.home_goals, away_goals: pred.away_goals }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -65,13 +65,6 @@ export default function PredictionGrid({
 
   return (
     <div className="space-y-4">
-      {!pin && (
-        <div className="p-4 rounded-xl bg-yellow-950/30 border border-yellow-700/30 text-yellow-400 text-sm flex items-start gap-2">
-          <span className="shrink-0 mt-0.5">⚠️</span>
-          <span>Vista de solo lectura. Para editar, <a href="/participante" className="underline">ingresa con tu PIN</a>.</span>
-        </div>
-      )}
-
       {GROUPS.map(group => {
         const groupMatches = matches.filter(m => m.group === group)
         if (!groupMatches.length) return null
@@ -118,7 +111,7 @@ export default function PredictionGrid({
 
                     {/* Score inputs */}
                     <div className="shrink-0">
-                      {locked || !pin ? (
+                      {locked ? (
                         <div className="flex items-center gap-1 font-mono font-bold">
                           <span className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm ${
                             played ? 'bg-slate-700 text-white' : 'bg-slate-800/60 text-slate-500'
@@ -135,18 +128,14 @@ export default function PredictionGrid({
                       ) : (
                         <div className="flex items-center gap-1">
                           <input
-                            type="number"
-                            inputMode="numeric"
-                            min={0} max={20}
+                            type="number" inputMode="numeric" min={0} max={20}
                             value={pred?.home_goals ?? ''}
                             onChange={e => updatePred(match.id, 'home_goals', e.target.value)}
                             className="w-10 h-10 text-center bg-slate-800/80 border border-white/10 rounded-lg text-white font-mono text-base focus:outline-none focus:border-cyan-500/60 transition-colors"
                           />
                           <span className="text-slate-700 text-xs">–</span>
                           <input
-                            type="number"
-                            inputMode="numeric"
-                            min={0} max={20}
+                            type="number" inputMode="numeric" min={0} max={20}
                             value={pred?.away_goals ?? ''}
                             onChange={e => updatePred(match.id, 'away_goals', e.target.value)}
                             className="w-10 h-10 text-center bg-slate-800/80 border border-white/10 rounded-lg text-white font-mono text-base focus:outline-none focus:border-cyan-500/60 transition-colors"
@@ -154,7 +143,6 @@ export default function PredictionGrid({
                           <button
                             onClick={() => savePrediction(match.id)}
                             disabled={saving === match.id || pred === undefined}
-                            aria-label="Guardar pronóstico"
                             className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                               saved[match.id]
                                 ? 'bg-green-700/60 border border-green-600/40 text-green-300'
@@ -187,9 +175,7 @@ export default function PredictionGrid({
                   {played && scoreInfo && scoreInfo.total === 0 && (
                     <p className="text-xs text-slate-700 mt-1.5">Sin puntos en este partido</p>
                   )}
-                  {errors[match.id] && (
-                    <p className="text-red-400 text-xs mt-1.5">{errors[match.id]}</p>
-                  )}
+                  {errors[match.id] && <p className="text-red-400 text-xs mt-1.5">{errors[match.id]}</p>}
                 </div>
               )
             })}
