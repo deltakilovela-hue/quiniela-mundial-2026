@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase, fetchAllPredictions } from '@/lib/supabase'
-import { calcStandings } from '@/lib/scoring'
+import { calcStandings, calcPrizes } from '@/lib/scoring'
 import Link from 'next/link'
 import { Zap } from 'lucide-react'
 
@@ -11,7 +11,10 @@ type Match = { id: string; home_goals_real: number | null; away_goals_real: numb
 type Prediction = { participant_id: string; match_id: string; home_goals: number; away_goals: number }
 type Participant = { id: string; name: string }
 
-const PRIZES = ['$7,500', '$4,000', '$2,500']
+function formatMoney(n: number): string {
+  return '$' + n.toLocaleString('es-MX', { maximumFractionDigits: 2 })
+}
+
 const MEDAL_COLORS = [
   'from-yellow-500/20 border-yellow-500/30',
   'from-slate-400/15 border-slate-400/20',
@@ -56,6 +59,8 @@ export default function RealtimeStandings({
 
   const top3 = standings.slice(0, 3)
   const rest  = standings.slice(3)
+  const prizes = calcPrizes(standings)
+  const hasTie = Array.from(prizes.values()).some(p => p.tiedWith > 1)
 
   return (
     <div className="space-y-4">
@@ -77,22 +82,42 @@ export default function RealtimeStandings({
 
       {/* Top 3 podium cards */}
       <div className="grid grid-cols-3 gap-2">
-        {top3.map((p, i) => (
-          <Link
-            key={p.id}
-            href={`/participante/${p.id}`}
-            className={`rounded-xl border bg-gradient-to-b ${MEDAL_COLORS[i]} to-transparent p-3 sm:p-4 text-center cursor-pointer hover:scale-[1.02] transition-transform`}
-          >
-            <div className="text-xl sm:text-2xl mb-1">{MEDALS[i]}</div>
-            <div className="text-xs sm:text-sm font-semibold text-white truncate">{p.name}</div>
-            <div className={`text-xl sm:text-2xl font-bold font-mono mt-1 text-glow-teal ${MEDAL_TEXT[i]}`}>
-              {p.points}
-            </div>
-            <div className="text-xs text-slate-500 mt-0.5">pts</div>
-            <div className={`text-xs font-semibold mt-2 ${MEDAL_TEXT[i]}`}>{PRIZES[i]}</div>
-          </Link>
-        ))}
+        {top3.map((p, i) => {
+          const prize = prizes.get(p.id)
+          return (
+            <Link
+              key={p.id}
+              href={`/participante/${p.id}`}
+              className={`rounded-xl border bg-gradient-to-b ${MEDAL_COLORS[i]} to-transparent p-3 sm:p-4 text-center cursor-pointer hover:scale-[1.02] transition-transform`}
+            >
+              <div className="text-xl sm:text-2xl mb-1">{MEDALS[i]}</div>
+              <div className="text-xs sm:text-sm font-semibold text-white truncate">{p.name}</div>
+              <div className={`text-xl sm:text-2xl font-bold font-mono mt-1 text-glow-teal ${MEDAL_TEXT[i]}`}>
+                {p.points}
+              </div>
+              <div className="text-xs text-slate-500 mt-0.5">pts</div>
+              <div className={`text-xs font-semibold mt-2 ${MEDAL_TEXT[i]}`}>
+                {prize ? formatMoney(prize.amount) : '—'}
+              </div>
+              {prize && prize.tiedWith > 1 && (
+                <div className="text-[10px] text-slate-500 mt-0.5">empate ×{prize.tiedWith}</div>
+              )}
+            </Link>
+          )
+        })}
       </div>
+
+      {/* Tie rule notice (shown when a prize position is currently tied) */}
+      {hasTie && (
+        <div className="rounded-xl border border-yellow-700/30 bg-yellow-950/20 p-3 text-xs text-yellow-200/80 flex items-start gap-2">
+          <span className="shrink-0">⚖️</span>
+          <span>
+            <strong className="text-yellow-300">Empate en premios:</strong> cuando 2 o más participantes
+            empatan en puntos, los premios de esos lugares se suman y se reparten en partes iguales.
+            Los montos de arriba ya reflejan el reparto.
+          </span>
+        </div>
+      )}
 
       {/* Rest of standings */}
       <div className="rounded-xl border border-white/6 bg-slate-900/40 overflow-hidden">

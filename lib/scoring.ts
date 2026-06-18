@@ -75,6 +75,43 @@ export function calcMatchScore(
   return { base, bonus, total, breakdown }
 }
 
+// Prize amounts for 1st, 2nd, 3rd place (MXN)
+export const PRIZE_AMOUNTS = [7500, 4000, 2500]
+export const PRIZE_TOTAL = PRIZE_AMOUNTS.reduce((s, p) => s + p, 0)
+
+export type PrizeInfo = { amount: number; tiedWith: number; positions: number[] }
+
+// Distributes the 3 prizes across the standings, honoring the tie rule:
+// when N participants tie for a set of prize positions, the prizes for the
+// positions they occupy are pooled and split equally. With more people tied
+// than remaining prize slots, the pool is still just the remaining prizes.
+export function calcPrizes(
+  standings: { id: string; points: number }[]
+): Map<string, PrizeInfo> {
+  const result = new Map<string, PrizeInfo>()
+  let i = 0
+  let slot = 0
+  while (i < standings.length && slot < PRIZE_AMOUNTS.length) {
+    if (standings[i].points <= 0) break // no points, no prize
+    let j = i
+    while (j < standings.length && standings[j].points === standings[i].points) j++
+    const n = j - i
+    const positions: number[] = []
+    let pool = 0
+    for (let s = slot; s < Math.min(slot + n, PRIZE_AMOUNTS.length); s++) {
+      pool += PRIZE_AMOUNTS[s]
+      positions.push(s + 1)
+    }
+    if (pool > 0) {
+      const each = pool / n
+      for (let k = i; k < j; k++) result.set(standings[k].id, { amount: each, tiedWith: n, positions })
+    }
+    slot += n
+    i = j
+  }
+  return result
+}
+
 export function calcStandings(
   participants: { id: string; name: string }[],
   matches: { id: string; home_goals_real: number | null; away_goals_real: number | null }[],

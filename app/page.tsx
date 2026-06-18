@@ -51,6 +51,26 @@ export default async function StandingsPage() {
         ))}
       </div>
 
+      {/* Tie rule */}
+      <details className="rounded-xl border border-white/5 bg-slate-900/50 p-4 text-xs text-slate-400">
+        <summary className="cursor-pointer text-slate-300 font-semibold text-sm flex items-center gap-2 select-none">
+          <span>⚖️</span> ¿Qué pasa en caso de empate?
+        </summary>
+        <div className="mt-3 space-y-2 text-slate-400 leading-relaxed">
+          <p>
+            Si al final de la fase de grupos dos o más participantes terminan con los mismos puntos en los
+            primeros lugares, los premios de esos lugares <strong className="text-slate-200">se suman y se
+            reparten en partes iguales</strong> entre ellos.
+          </p>
+          <ul className="space-y-1.5 mt-2">
+            <li className="flex gap-2"><span className="text-cyan-500">🔹</span><span><strong className="text-slate-200">2 empatan en 1°</strong> → se suman 1° y 2° ($11,500) → <strong className="text-cyan-400">$5,750</strong> c/u</span></li>
+            <li className="flex gap-2"><span className="text-cyan-500">🔹</span><span><strong className="text-slate-200">3 empatan en 1°</strong> → se suman los 3 premios ($14,000) → <strong className="text-cyan-400">$4,666.66</strong> c/u</span></li>
+            <li className="flex gap-2"><span className="text-cyan-500">🔹</span><span><strong className="text-slate-200">4 o más en 1°</strong> → se suman los 3 premios ($14,000) y se dividen entre todas por igual</span></li>
+            <li className="flex gap-2"><span className="text-cyan-500">🔹</span><span><strong className="text-slate-200">2 empatan en 2°</strong> → se suman 2° y 3° ($6,500) → <strong className="text-cyan-400">$3,250</strong> c/u</span></li>
+          </ul>
+        </div>
+      </details>
+
       {/* Today / Tomorrow matches */}
       <TodayMatches todayMatches={todayMatches} tomorrowMatches={tomorrowMatches} />
 
