@@ -33,7 +33,7 @@ export default async function ParticipantePage({
     const myPred = myPredictions.find(p => p.match_id === match.id)
     if (!myPred) continue
     const matchPreds = (allPredictions ?? []).filter(p => p.match_id === match.id)
-    const { total, base } = calcMatchScore(myPred, match, matchPreds)
+    const { total, base } = calcMatchScore(myPred, { home_goals: match.home_goals_real!, away_goals: match.away_goals_real! }, matchPreds)
     totalPoints += total
     if (myPred.home_goals === match.home_goals_real && myPred.away_goals === match.away_goals_real) exactCount++
     if (base >= 2) correctCount++
