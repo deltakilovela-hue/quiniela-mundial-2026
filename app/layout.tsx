@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import Link from 'next/link'
 import { Trophy, Calendar, User, Shield, CheckCircle } from 'lucide-react'
+import BackgroundSync from '@/components/BackgroundSync'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -16,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className="h-full">
       <body className={`${inter.className} min-h-full`} style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
+        <BackgroundSync />
 
         {/* Nav */}
         <header className="sticky top-0 z-50 border-b border-white/5" style={{ background: 'rgba(2,6,23,0.85)', backdropFilter: 'blur(16px)' }}>
