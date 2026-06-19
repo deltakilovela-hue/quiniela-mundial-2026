@@ -47,12 +47,16 @@ export async function fetchESPNMatchesByDate(dateParam: string): Promise<ESPNMat
 
       const statusObj = ev.status as Record<string, unknown> | undefined
       const statusType = statusObj?.type as Record<string, unknown> | undefined
-      const statusName = String(statusType?.name ?? '')
       const statusDesc = String(statusType?.description ?? '')
+      // ESPN uses a `state` field: 'pre' (scheduled), 'in' (live), 'post' (finished).
+      // Soccer's finished status is STATUS_FULL_TIME (not STATUS_FINAL), so rely on
+      // `state`/`completed` rather than the status name.
+      const statusState = String(statusType?.state ?? '')
+      const statusCompleted = statusType?.completed === true
 
       let status: ESPNMatch['status'] = 'upcoming'
-      if (statusName === 'STATUS_FINAL') status = 'finished'
-      else if (statusName === 'STATUS_IN_PROGRESS' || statusName === 'STATUS_HALFTIME') status = 'live'
+      if (statusState === 'post' || statusCompleted) status = 'finished'
+      else if (statusState === 'in') status = 'live'
 
       // Kickoff time from competitions[0].startDate
       const kickoffUTC = String((comp as Record<string, unknown>).startDate ?? ev.date ?? '')

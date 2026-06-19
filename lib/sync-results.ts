@@ -1,6 +1,5 @@
 import { getServiceClient } from '@/lib/supabase'
 import { fetchESPNMatchesByDate, fetchESPNGoals, type ESPNMatch } from '@/lib/espn-football'
-import { fetchSheetResults } from '@/lib/sheet-results'
 
 export interface SyncResult {
   updated: number
@@ -53,76 +52,64 @@ function matchESPN(espn: ESPNMatch, homeES: string, awayES: string): boolean {
   return (eH.includes(nH) || nH.includes(eH)) && (eA.includes(nA) || nA.includes(eA))
 }
 
-// PRIMARY: Sync match scores from the Google Sheet (published as CSV).
-// The Sheet is the family's source of truth for results.
-async function syncFromSheet(result: SyncResult) {
-  const csvUrl = process.env.SHEET_CSV_URL
-  if (!csvUrl) {
-    result.errors.push('SHEET_CSV_URL not set')
-    return
+// Loads the ESPN scoreboard across the whole group-stage window once, so every
+// played match can be matched by team name regardless of its (placeholder) date.
+async function loadESPNRange(): Promise<ESPNMatch[]> {
+  const espnCache: Record<string, ESPNMatch[]> = {}
+  const today = new Date()
+  // Cover today-15 .. today+3 — wide enough to catch any recently played match
+  for (let offset = -15; offset <= 3; offset++) {
+    const d = new Date(today)
+    d.setDate(today.getDate() + offset)
+    const param = d.toISOString().slice(0, 10).replace(/-/g, '')
+    if (!espnCache[param]) espnCache[param] = await fetchESPNMatchesByDate(param)
   }
+  return Object.values(espnCache).flat()
+}
 
+// PRIMARY: Sync match scores + scorers + live lock from ESPN (the internet).
+// Results come automatically from real World Cup data — no manual entry.
+async function syncFromESPN(result: SyncResult) {
   const supabase = getServiceClient()
   const { data: dbMatches } = await supabase.from('matches').select('*').order('match_date')
   if (!dbMatches?.length) return
 
-  const sheetResults = await fetchSheetResults(csvUrl)
-  result.fixtures_fetched += sheetResults.length
-
-  for (const dbMatch of dbMatches) {
-    // Match by team names (normalized) — Sheet uses the same Spanish names as the DB
-    const sr = sheetResults.find(
-      s => normName(s.home) === normName(dbMatch.home_team) && normName(s.away) === normName(dbMatch.away_team)
-    )
-    if (!sr) continue
-
-    if (dbMatch.home_goals_real !== sr.homeGoals || dbMatch.away_goals_real !== sr.awayGoals) {
-      const { error } = await supabase
-        .from('matches')
-        .update({ home_goals_real: sr.homeGoals, away_goals_real: sr.awayGoals, is_locked: true })
-        .eq('id', dbMatch.id)
-      if (error) result.errors.push(`${dbMatch.id}: ${error.message}`)
-      else result.updated++
-    }
-  }
-}
-
-// SECONDARY: Fetch goal scorers from ESPN for matches already marked as played.
-// ESPN no longer writes scores — only scorers (which the Sheet doesn't have).
-async function syncScorersFromESPN(result: SyncResult) {
-  const supabase = getServiceClient()
-
-  const { data: dbMatches } = await supabase
-    .from('matches')
-    .select('*')
-    .not('home_goals_real', 'is', null)
-    .is('scorers', null)
-
-  if (!dbMatches?.length) return
-
-  const espnCache: Record<string, ESPNMatch[]> = {}
-  async function loadDate(param: string) {
-    if (!espnCache[param]) espnCache[param] = await fetchESPNMatchesByDate(param)
-  }
-
-  const today = new Date()
-  for (let offset = -10; offset <= 1; offset++) {
-    const d = new Date(today)
-    d.setDate(today.getDate() + offset)
-    await loadDate(d.toISOString().slice(0, 10).replace(/-/g, ''))
-  }
-
-  const allESPN = Object.values(espnCache).flat()
+  const allESPN = await loadESPNRange()
+  result.fixtures_fetched += allESPN.length
 
   for (const dbMatch of dbMatches) {
     const espnMatch = allESPN.find(e => matchESPN(e, dbMatch.home_team, dbMatch.away_team))
-    if (!espnMatch || espnMatch.status !== 'finished') continue
+    if (!espnMatch) continue
 
-    const goals = await fetchESPNGoals(espnMatch.id)
-    if (goals.length > 0) {
-      const scorersStr = goals.map(g => `${g.scorer} ${g.minute}`).join(' · ')
-      const { error } = await supabase.from('matches').update({ scorers: scorersStr }).eq('id', dbMatch.id)
-      if (!error) result.scorers_updated++
+    const updates: Record<string, unknown> = {}
+
+    // Live → lock predictions
+    if (espnMatch.status === 'live' && !dbMatch.is_locked) {
+      updates.is_locked = true
+      result.locked++
+    }
+
+    // Finished → write score + scorers
+    if (espnMatch.status === 'finished' && espnMatch.homeScore !== null && espnMatch.awayScore !== null) {
+      if (dbMatch.home_goals_real !== espnMatch.homeScore || dbMatch.away_goals_real !== espnMatch.awayScore) {
+        updates.home_goals_real = espnMatch.homeScore
+        updates.away_goals_real = espnMatch.awayScore
+        updates.is_locked = true
+        result.updated++
+      }
+      // Fetch scorers if we don't have them yet
+      if (!dbMatch.scorers) {
+        const goals = await fetchESPNGoals(espnMatch.id)
+        if (goals.length > 0) {
+          updates.scorers = goals.map(g => `${g.scorer} ${g.minute}`).join(' · ')
+          result.scorers_updated++
+        }
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      const { error } = await supabase.from('matches').update(updates).eq('id', dbMatch.id)
+      if (error) result.errors.push(`${dbMatch.id}: ${error.message}`)
     }
   }
 }
@@ -131,11 +118,8 @@ export async function syncResults(): Promise<SyncResult> {
   const result: SyncResult = { updated: 0, locked: 0, scorers_updated: 0, time_updated: 0, errors: [], fixtures_fetched: 0 }
 
   try {
-    // PRIMARY: Google Sheet — match scores (family's source of truth)
-    await syncFromSheet(result)
-
-    // SECONDARY: ESPN — goal scorers only (Sheet doesn't have them)
-    await syncScorersFromESPN(result)
+    // ESPN (internet) — scores + scorers + live lock, fully automatic
+    await syncFromESPN(result)
   } catch (err) {
     result.errors.push(err instanceof Error ? err.message : String(err))
   }
