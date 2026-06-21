@@ -23,7 +23,7 @@ const ES_TO_ESPN: Record<string, string> = {
   'Noruega': 'Norway', 'Rumania': 'Romania', 'Eslovaquia': 'Slovakia',
   'Bosnia y Herz.': 'Bosnia-Herzegovina', 'Japón': 'Japan',
   'Arabia Saudita': 'Saudi Arabia', 'Irak': 'Iraq', 'Irán': 'Iran',
-  'Jordania': 'Jordan', 'Uzbekistán': 'Uzbekistan', 'Turquía': 'Turkey',
+  'Jordania': 'Jordan', 'Uzbekistán': 'Uzbekistan', 'Turquía': 'Türkiye',
   'Nueva Zelanda': 'New Zealand', 'Marruecos': 'Morocco', 'Argelia': 'Algeria',
   'Túnez': 'Tunisia', 'Egipto': 'Egypt', 'Camerún': 'Cameroon',
   'Costa de Marfil': 'Ivory Coast', 'Cabo Verde': 'Cape Verde',
@@ -39,17 +39,24 @@ const ES_TO_ESPN: Record<string, string> = {
 }
 
 function normName(name: string) {
-  return name.toLowerCase().replace(/[^a-z]/g, '')
+  // Fold accents (Türkiye → turkiye, Curaçao → curacao) then keep only letters
+  return name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]/g, '')
 }
 
-function matchESPN(espn: ESPNMatch, homeES: string, awayES: string): boolean {
-  const homeEN = ES_TO_ESPN[homeES] ?? homeES
-  const awayEN = ES_TO_ESPN[awayES] ?? awayES
-  const eH = normName(espn.homeTeam)
-  const eA = normName(espn.awayTeam)
-  const nH = normName(homeEN)
-  const nA = normName(awayEN)
-  return (eH.includes(nH) || nH.includes(eH)) && (eA.includes(nA) || nA.includes(eA))
+function teamsEqual(espnTeam: string, dbTeamES: string): boolean {
+  const en = ES_TO_ESPN[dbTeamES] ?? dbTeamES
+  const e = normName(espnTeam)
+  const n = normName(en)
+  return e.includes(n) || n.includes(e)
+}
+
+// ESPN sometimes lists a fixture with home/away swapped vs our quiniela.
+// Returns 'direct', 'reversed', or null (no match). On 'reversed' the caller
+// must flip the score so it stays correct for our home/away orientation.
+function matchOrientation(espn: ESPNMatch, homeES: string, awayES: string): 'direct' | 'reversed' | null {
+  if (teamsEqual(espn.homeTeam, homeES) && teamsEqual(espn.awayTeam, awayES)) return 'direct'
+  if (teamsEqual(espn.homeTeam, awayES) && teamsEqual(espn.awayTeam, homeES)) return 'reversed'
+  return null
 }
 
 // Loads the ESPN scoreboard across the whole group-stage window once, so every
@@ -78,8 +85,12 @@ async function syncFromESPN(result: SyncResult) {
   result.fixtures_fetched += allESPN.length
 
   for (const dbMatch of dbMatches) {
-    const espnMatch = allESPN.find(e => matchESPN(e, dbMatch.home_team, dbMatch.away_team))
-    if (!espnMatch) continue
+    let orientation: 'direct' | 'reversed' | null = null
+    const espnMatch = allESPN.find(e => {
+      orientation = matchOrientation(e, dbMatch.home_team, dbMatch.away_team)
+      return orientation !== null
+    })
+    if (!espnMatch || !orientation) continue
 
     const updates: Record<string, unknown> = {}
 
@@ -89,11 +100,13 @@ async function syncFromESPN(result: SyncResult) {
       result.locked++
     }
 
-    // Finished → write score + scorers
+    // Finished → write score + scorers (flip score if ESPN has teams swapped)
     if (espnMatch.status === 'finished' && espnMatch.homeScore !== null && espnMatch.awayScore !== null) {
-      if (dbMatch.home_goals_real !== espnMatch.homeScore || dbMatch.away_goals_real !== espnMatch.awayScore) {
-        updates.home_goals_real = espnMatch.homeScore
-        updates.away_goals_real = espnMatch.awayScore
+      const homeScore = orientation === 'reversed' ? espnMatch.awayScore : espnMatch.homeScore
+      const awayScore = orientation === 'reversed' ? espnMatch.homeScore : espnMatch.awayScore
+      if (dbMatch.home_goals_real !== homeScore || dbMatch.away_goals_real !== awayScore) {
+        updates.home_goals_real = homeScore
+        updates.away_goals_real = awayScore
         updates.is_locked = true
         result.updated++
       }
