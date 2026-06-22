@@ -84,6 +84,7 @@ const CLINCHED = new Set<string>([
   '1A', // México
   '1D', // EE.UU.
   '1E', // Alemania
+  '1J', // Argentina
 ])
 
 function resolveWinnerRunnerUp(code: string, tables: GroupTables): Slot {

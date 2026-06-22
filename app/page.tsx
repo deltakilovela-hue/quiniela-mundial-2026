@@ -2,6 +2,7 @@ import { supabase, fetchAllPredictions } from '@/lib/supabase'
 import { calcStandings } from '@/lib/scoring'
 import RealtimeStandings from '@/components/RealtimeStandings'
 import TodayMatches from '@/components/TodayMatches'
+import NewsFeed from '@/components/NewsFeed'
 
 export const revalidate = 60
 
@@ -73,6 +74,9 @@ export default async function StandingsPage() {
 
       {/* Today / Tomorrow matches */}
       <TodayMatches todayMatches={todayMatches} tomorrowMatches={tomorrowMatches} />
+
+      {/* World Cup news */}
+      <NewsFeed />
 
       {/* Standings */}
       <RealtimeStandings initialStandings={standings} initialPlayed={played} />
