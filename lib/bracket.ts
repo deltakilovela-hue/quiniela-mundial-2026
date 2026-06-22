@@ -81,12 +81,13 @@ function resolveWinnerRunnerUp(code: string, tables: GroupTables): Slot {
   const pos = code[0] === '1' ? 0 : 1
   const group = code.slice(1)
   const rows = tables[group]
-  const team = rows?.[pos]
+  const confirmed = groupComplete(rows)
   return {
     code,
-    label: `${pos === 0 ? '1°' : '2°'} ${group}`,
-    team,
-    confirmed: groupComplete(rows),
+    label: `${pos === 0 ? '1°' : '2°'} Grupo ${group}`,
+    // Only show a team once it's officially decided (group finished). No provisionals.
+    team: confirmed ? rows?.[pos] : undefined,
+    confirmed,
   }
 }
 
@@ -106,8 +107,9 @@ function buildThirdSlots(tables: GroupTables): Record<string, Slot> {
     if (pick) used.add(pick.team)
     slots[code] = {
       code,
-      label: `3° (${eligible.join('/')})`,
-      team: pick,
+      label: '3° mejor',
+      // Thirds are only official once every group has finished.
+      team: allGroupsDone ? pick : undefined,
       confirmed: allGroupsDone,
     }
   }
