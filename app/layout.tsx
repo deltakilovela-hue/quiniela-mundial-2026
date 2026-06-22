@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Link from 'next/link'
-import { Trophy, Calendar, User, Shield, CheckCircle } from 'lucide-react'
+import { Trophy, Calendar, User, Shield, CheckCircle, GitFork } from 'lucide-react'
 import BackgroundSync from '@/components/BackgroundSync'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -31,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {[
                 { href: '/', icon: Trophy, label: 'Tabla' },
                 { href: '/resultados', icon: CheckCircle, label: 'Resultados' },
+                { href: '/eliminatorias', icon: GitFork, label: 'Eliminatorias' },
                 { href: '/programa', icon: Calendar, label: 'Programa' },
                 { href: '/participante', icon: User, label: 'Mi Quiniela' },
                 { href: '/admin', icon: Shield, label: 'Admin', dim: true },
