@@ -77,15 +77,24 @@ const RIGHT_CODES: [string, string][] = [
   ['1J', '2H'], ['2D', '2G'], ['1B', '3EFGIJ'], ['1K', '3DEIJL'],
 ]
 
+// Manual overrides for teams that have mathematically clinched a position
+// before their group formally ends. Format: 'group:pos' (pos 1 = winner, 2 = runner-up).
+// Example: '1A' = group A winner is locked. Edit as more teams clinch.
+const CLINCHED = new Set<string>([
+  '1A', // México
+  '1D', // EE.UU.
+  '1E', // Alemania
+])
+
 function resolveWinnerRunnerUp(code: string, tables: GroupTables): Slot {
   const pos = code[0] === '1' ? 0 : 1
   const group = code.slice(1)
   const rows = tables[group]
-  const confirmed = groupComplete(rows)
+  const confirmed = groupComplete(rows) || CLINCHED.has(code)
   return {
     code,
     label: `${pos === 0 ? '1°' : '2°'} Grupo ${group}`,
-    // Only show a team once it's officially decided (group finished). No provisionals.
+    // Only show a team once it's officially decided (group finished or clinched). No provisionals.
     team: confirmed ? rows?.[pos] : undefined,
     confirmed,
   }
