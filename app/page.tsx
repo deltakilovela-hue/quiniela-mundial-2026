@@ -23,8 +23,11 @@ export default async function StandingsPage() {
   const standings = calcStandings(participants ?? [], matches ?? [], predictions)
   const played = (matches ?? []).filter(m => m.home_goals_real !== null).length
 
-  const todayMatches    = (matches ?? []).filter(m => m.match_date?.startsWith(todayStr))
-  const tomorrowMatches = (matches ?? []).filter(m => m.match_date?.startsWith(tomorrowStr))
+  // Compare by the match's Mexico-local date (not the raw UTC prefix) so games
+  // land on the right day regardless of kickoff time.
+  const mxDate = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Regina' })
+  const todayMatches    = (matches ?? []).filter(m => m.match_date && mxDate(m.match_date) === todayStr)
+  const tomorrowMatches = (matches ?? []).filter(m => m.match_date && mxDate(m.match_date) === tomorrowStr)
 
   return (
     <div className="space-y-8">

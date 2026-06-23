@@ -64,8 +64,9 @@ function matchOrientation(espn: ESPNMatch, homeES: string, awayES: string): 'dir
 async function loadESPNRange(): Promise<ESPNMatch[]> {
   const espnCache: Record<string, ESPNMatch[]> = {}
   const today = new Date()
-  // Cover today-15 .. today+3 — wide enough to catch any recently played match
-  for (let offset = -15; offset <= 3; offset++) {
+  // Cover today-15 .. today+12 — wide enough to catch recently played matches
+  // and to pull correct kickoff dates for upcoming fixtures across the stage.
+  for (let offset = -15; offset <= 12; offset++) {
     const d = new Date(today)
     d.setDate(today.getDate() + offset)
     const param = d.toISOString().slice(0, 10).replace(/-/g, '')
@@ -95,6 +96,17 @@ async function syncFromESPN(result: SyncResult) {
     const updates: Record<string, unknown> = {}
     const flip = (h: number | null, a: number | null) =>
       orientation === 'reversed' ? [a, h] : [h, a]
+
+    // Correct the scheduled kickoff from ESPN's real date/time (DB was seeded
+    // with placeholder dates). Only write when it differs by > 1 minute.
+    if (espnMatch.kickoffUTC) {
+      const espnTime = new Date(espnMatch.kickoffUTC).getTime()
+      const dbTime = new Date(dbMatch.match_date).getTime()
+      if (!Number.isNaN(espnTime) && Math.abs(espnTime - dbTime) > 60_000) {
+        updates.match_date = espnMatch.kickoffUTC
+        result.time_updated++
+      }
+    }
 
     // Live → lock predictions + store live score for the in-app live view
     if (espnMatch.status === 'live') {
