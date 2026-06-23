@@ -1,23 +1,27 @@
 'use client'
 
 import type { Match } from '@/lib/supabase'
+import Link from 'next/link'
 
 function MatchCard({ match }: { match: Match }) {
   const played = match.home_goals_real !== null && match.away_goals_real !== null
   const live = match.is_locked && !played
+  const hasLiveScore = live && match.live_status != null
 
   return (
-    <div className={`rounded-xl border p-3 sm:p-4 transition-colors ${
+    <Link href={`/partido/${match.id}`} className={`block rounded-xl border p-3 sm:p-4 transition-colors cursor-pointer ${
       live
-        ? 'border-cyan-500/40 bg-cyan-950/20'
+        ? 'border-red-500/40 bg-red-950/20 hover:bg-red-950/30'
         : played
-        ? 'border-green-500/25 bg-green-950/10'
-        : 'border-white/6 bg-slate-900/60'
+        ? 'border-green-500/25 bg-green-950/10 hover:bg-green-950/20'
+        : 'border-white/6 bg-slate-900/60 hover:bg-slate-900/80'
     }`}>
       {live && (
         <div className="flex items-center gap-1.5 mb-2">
           <span className="w-2 h-2 rounded-full bg-red-500 pulse-soft" />
-          <span className="text-red-400 text-xs font-semibold uppercase tracking-wide">En vivo</span>
+          <span className="text-red-400 text-xs font-semibold uppercase tracking-wide">
+            En vivo{hasLiveScore && match.live_status !== 'En vivo' ? ` · ${match.live_status}` : ''}
+          </span>
         </div>
       )}
       {played && (
@@ -39,6 +43,10 @@ function MatchCard({ match }: { match: Match }) {
             <span className="font-bold text-white text-sm sm:text-base font-mono">
               {match.home_goals_real} – {match.away_goals_real}
             </span>
+          ) : hasLiveScore ? (
+            <span className="font-bold text-red-300 text-sm sm:text-base font-mono animate-pulse">
+              {match.live_home ?? 0} – {match.live_away ?? 0}
+            </span>
           ) : (
             <span className="text-slate-600 text-xs">vs</span>
           )}
@@ -51,8 +59,8 @@ function MatchCard({ match }: { match: Match }) {
         </div>
       </div>
 
-      <div className="mt-2 text-xs text-slate-600 text-center">Grupo {match.group}</div>
-    </div>
+      <div className="mt-2 text-xs text-slate-600 text-center">Grupo {match.group} · ver pronósticos</div>
+    </Link>
   )
 }
 
