@@ -50,6 +50,9 @@ export type Match = {
   away_goals_real: number | null
   is_locked: boolean
   scorers?: string | null
+  live_home?: number | null
+  live_away?: number | null
+  live_status?: string | null
 }
 
 export type Prediction = {

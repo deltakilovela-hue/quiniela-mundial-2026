@@ -93,22 +93,35 @@ async function syncFromESPN(result: SyncResult) {
     if (!espnMatch || !orientation) continue
 
     const updates: Record<string, unknown> = {}
+    const flip = (h: number | null, a: number | null) =>
+      orientation === 'reversed' ? [a, h] : [h, a]
 
-    // Live → lock predictions
-    if (espnMatch.status === 'live' && !dbMatch.is_locked) {
-      updates.is_locked = true
-      result.locked++
+    // Live → lock predictions + store live score for the in-app live view
+    if (espnMatch.status === 'live') {
+      if (!dbMatch.is_locked) {
+        updates.is_locked = true
+        result.locked++
+      }
+      const [lh, la] = flip(espnMatch.homeScore, espnMatch.awayScore)
+      updates.live_home = lh
+      updates.live_away = la
+      updates.live_status = espnMatch.statusDisplay || 'En vivo'
     }
 
     // Finished → write score + scorers (flip score if ESPN has teams swapped)
     if (espnMatch.status === 'finished' && espnMatch.homeScore !== null && espnMatch.awayScore !== null) {
-      const homeScore = orientation === 'reversed' ? espnMatch.awayScore : espnMatch.homeScore
-      const awayScore = orientation === 'reversed' ? espnMatch.homeScore : espnMatch.awayScore
+      const [homeScore, awayScore] = flip(espnMatch.homeScore, espnMatch.awayScore)
       if (dbMatch.home_goals_real !== homeScore || dbMatch.away_goals_real !== awayScore) {
         updates.home_goals_real = homeScore
         updates.away_goals_real = awayScore
         updates.is_locked = true
         result.updated++
+      }
+      // Clear live fields once the match is over
+      if (dbMatch.live_status) {
+        updates.live_home = null
+        updates.live_away = null
+        updates.live_status = null
       }
       // Fetch scorers if we don't have them yet
       if (!dbMatch.scorers) {

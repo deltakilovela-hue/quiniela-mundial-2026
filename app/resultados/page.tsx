@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import type { Match } from '@/lib/supabase'
 import AutoRefresh from '@/components/AutoRefresh'
+import Link from 'next/link'
 
 export const revalidate = 30
 
@@ -37,11 +38,12 @@ function winner(m: Match): 'home' | 'away' | 'draw' {
 function MatchRow({ match: m }: { match: Match }) {
   const played = m.home_goals_real !== null && m.away_goals_real !== null
   const live = m.is_locked && !played
+  const hasLiveScore = live && m.live_status != null
   const w = played ? winner(m) : null
   const showTime = hasRealTime(m.match_date)
 
   return (
-    <div className={`px-3 sm:px-5 py-3.5 border-b border-white/4 last:border-0 transition-colors ${live ? 'bg-red-950/20' : 'hover:bg-white/2'}`}>
+    <Link href={`/partido/${m.id}`} className={`block px-3 sm:px-5 py-3.5 border-b border-white/4 last:border-0 transition-colors cursor-pointer ${live ? 'bg-red-950/20 hover:bg-red-950/30' : 'hover:bg-white/4'}`}>
 
       {/* Date + time row */}
       <div className="flex items-center justify-center gap-2 mb-2">
@@ -84,6 +86,12 @@ function MatchRow({ match: m }: { match: Match }) {
                 {m.away_goals_real}
               </span>
             </>
+          ) : hasLiveScore ? (
+            <>
+              <span className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-red-300 animate-pulse">{m.live_home ?? 0}</span>
+              <span className="text-red-700 font-mono">–</span>
+              <span className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-red-300 animate-pulse">{m.live_away ?? 0}</span>
+            </>
           ) : live ? (
             <span className="text-red-400 font-bold text-sm animate-pulse">vs</span>
           ) : (
@@ -110,7 +118,7 @@ function MatchRow({ match: m }: { match: Match }) {
           ))}
         </div>
       )}
-    </div>
+    </Link>
   )
 }
 
